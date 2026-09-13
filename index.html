@@ -556,6 +556,33 @@
     border-radius: 6px;
     white-space: nowrap;
   }
+  .sync-note-row { margin-top: 4px; }
+  .sync-note {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .sync-note::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent, #4f8cff);
+    animation: sync-pulse 1s ease-in-out infinite;
+  }
+  .sync-note.sync-warn {
+    color: var(--warn-text, #a15c00);
+  }
+  .sync-note.sync-warn::before {
+    animation: none;
+    background: var(--warn-text, #a15c00);
+  }
+  @keyframes sync-pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
 
   .price-row {
     display: flex;
@@ -960,7 +987,6 @@
       <h1>ScanCare</h1>
       <span class="tag">inventory lookup</span>
     </div>
-    <span class="demo-badge">Prototype</span>
   </header>
 
   <div class="session-bar" id="sessionBar" hidden>
@@ -1515,6 +1541,21 @@
   // no re-scanning needed to reach either.
   var viewState = null; // { barcode, existing, loading, actionOpen, editBatch, editingName }
 
+  // The last full catalog sync (ACTIVE_BATCHES) already sits in memory from login/refresh —
+  // for a barcode we've already seen this session, that's enough to show something
+  // real immediately instead of a blank spinner while the network round-trips.
+  function cachedMatchesForCode(code) {
+    var norm = normalizeBarcodeClient_(code);
+    if (!norm || !ACTIVE_BATCHES.length) return null;
+    var matches = ACTIVE_BATCHES.filter(function (b) {
+      return b.hasBarcode && normalizeBarcodeClient_(b.barcode) === norm;
+    });
+    return matches.length ? matches : null;
+  }
+  function normalizeBarcodeClient_(s) {
+    return String(s || "").trim().toUpperCase().replace(/\s+/g, "");
+  }
+
   function showResult(code) {
     if (usingImported) {
       viewState = { barcode: code, existing: sortBatches(batchesForBarcode(code)), loading: false, actionOpen: false, editBatch: null, editingName: false };
@@ -1522,17 +1563,41 @@
       renderResult();
       return;
     }
-    viewState = { barcode: code, existing: [], loading: true, actionOpen: false, editBatch: null, editingName: false };
+
+    // Instant path: show what we already know from the last catalog sync right
+    // away (marked "Syncing…"), then quietly confirm/update it from the live
+    // sheet a moment later. A cold cache (first scan of the session, or a
+    // barcode never seen before) falls back to the old spinner-then-answer flow.
+    var cached = cachedMatchesForCode(code);
+    viewState = {
+      barcode: code,
+      existing: cached ? sortBatches(cached) : [],
+      loading: !cached,
+      syncing: !!cached,
+      staleWarning: false,
+      actionOpen: false, editBatch: null, editingName: false
+    };
     renderResult();
     apiLookup(code).then(function (matches) {
       if (!viewState || viewState.barcode !== code) return; // superseded by a newer scan
       viewState.existing = sortBatches(matches);
       viewState.loading = false;
+      viewState.syncing = false;
+      viewState.staleWarning = false;
       logRecentIfFound();
       renderResult();
     }).catch(function (err) {
-      els.resultBody.innerHTML = '<div class="not-found">Couldn&rsquo;t reach your sheet: ' + escapeHtml(err.message) + '. Check your connection and try again.</div>';
-      viewState = null;
+      if (!viewState || viewState.barcode !== code) return;
+      if (cached) {
+        // Already showing something useful from cache — a network hiccup
+        // shouldn't blow that away, just flag it as possibly not current.
+        viewState.syncing = false;
+        viewState.staleWarning = true;
+        renderResult();
+      } else {
+        els.resultBody.innerHTML = '<div class="not-found">Couldn&rsquo;t reach your sheet: ' + escapeHtml(err.message) + '. Check your connection and try again.</div>';
+        viewState = null;
+      }
     });
   }
 
@@ -1628,11 +1693,16 @@
     var nameEditLinkHtml = nameEditAllowed
       ? '<button type="button" class="edit-link' + (s.editingName ? " active" : "") + '" id="editNameBtn">' + (s.editingName ? "Editing&hellip;" : "Edit") + '</button>'
       : "";
+    var syncNoteHtml = s.syncing
+      ? '<span class="sync-note">Syncing&hellip;</span>'
+      : (s.staleWarning ? '<span class="sync-note sync-warn">Couldn&rsquo;t reach the sheet &mdash; showing last known data</span>' : "");
+
     var html = '<div class="result-head">' +
       '<div><h3>' + escapeHtml(first.name) + '</h3>' +
       '<div class="result-cat-row"><span class="result-cat">' + s.existing.length + ' batch' + (s.existing.length === 1 ? "" : "es") + ' on file' + '</span>' + nameEditLinkHtml + '</div></div>' +
       '<div class="result-code">' + escapeHtml(first.hasBarcode ? s.barcode : "no barcode") + '</div>' +
     '</div>';
+    if (syncNoteHtml) html += '<div class="sync-note-row">' + syncNoteHtml + '</div>';
 
     if (s.editingName) {
       html += renderNameEditPanelHtml(first);
