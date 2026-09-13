@@ -573,11 +573,11 @@
     animation: sync-pulse 1s ease-in-out infinite;
   }
   .sync-note.sync-warn {
-    color: var(--warn-text, #a15c00);
+    color: var(--warn);
   }
   .sync-note.sync-warn::before {
     animation: none;
-    background: var(--warn-text, #a15c00);
+    background: var(--warn);
   }
   @keyframes sync-pulse {
     0%, 100% { opacity: 0.3; }
@@ -963,6 +963,42 @@
     cursor: pointer;
   }
   .session-bar button:hover { text-decoration: underline; }
+  .sync-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 16px 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 0.76rem;
+    font-weight: 500;
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+  .sync-banner button {
+    background: none;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    color: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pending-sync-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--warn);
+    background: var(--warn-soft);
+    border-radius: 5px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    white-space: nowrap;
+  }
   [hidden] { display: none !important; }
 </style>
 
@@ -992,6 +1028,11 @@
   <div class="session-bar" id="sessionBar" hidden>
     <span id="sessionUserLabel"></span>
     <button type="button" id="logoutBtn">Log out</button>
+  </div>
+
+  <div class="sync-banner" id="syncBanner" hidden>
+    <span id="syncBannerText"></span>
+    <button type="button" id="syncNowBtn">Sync now</button>
   </div>
 
   <div class="tabbar" role="tablist" aria-label="Sections">
@@ -1189,6 +1230,8 @@
     sessionBar.hidden = false;
     sessionUserLabel.textContent = s ? (s.username + (s.role === "admin" ? " · admin" : "")) : "";
     applyRolePermissions();
+    renderSyncBanner();
+    flushWriteQueue(); // picks up anything left queued from a previous session that never synced
   }
 
   function showLoginScreen(message) {
@@ -1280,6 +1323,16 @@
     // No explicit Content-Type: keeps this a CORS-safelisted "simple request"
     // (browser defaults to text/plain), which avoids a blocked preflight OPTIONS call.
     return fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+      .catch(function (netErr) {
+        // fetch() itself rejecting (not a bad response, an actual failure to reach the
+        // network at all) is the one reliable "you're offline / no signal" signal in the
+        // browser. Tag it distinctly so callers can tell this apart from a normal
+        // ok:false business error (like a validation failure), which should NEVER be
+        // queued for later — only a real connectivity failure should be.
+        var e = new Error("Couldn’t reach your sheet — check your connection.");
+        e.isOffline = true;
+        throw e;
+      })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         // The backend — not this code's own guess — is what decides a session is no
@@ -1291,6 +1344,77 @@
         }
         return data;
       });
+  }
+
+  // ============================================================================
+  // Offline write queue — a write (add / adjust / rename) that fails because the
+  // device genuinely can't reach the network gets queued locally instead of just
+  // showing an error, and retried automatically once the connection's back. Reads
+  // (scanning) already survive a bad connection via the instant-cache path above;
+  // this is the equivalent for writes, so a dead spot on the floor never blocks you
+  // from actually recording what you're doing.
+  //
+  // Every queued op is safe to replay later without corrupting anything: "adjust"
+  // sends a signed delta (not an absolute number), so it applies correctly on top
+  // of whatever the sheet holds by the time it syncs; "append" and "rename" are
+  // independent, idempotent-enough writes. The same LockService protection on the
+  // backend still serializes them with everyone else's writes when they land.
+  // ============================================================================
+  var WRITE_QUEUE_KEY = "sohascan_write_queue_v1";
+
+  function loadWriteQueue_() {
+    try { return JSON.parse(localStorage.getItem(WRITE_QUEUE_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveWriteQueue_(q) {
+    try { localStorage.setItem(WRITE_QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* storage unavailable — queue just won't survive a reload */ }
+  }
+  function queueWrite_(payload, label) {
+    var q = loadWriteQueue_();
+    q.push({ id: "q" + Date.now() + "_" + Math.random().toString(36).slice(2), payload: payload, label: label, queuedAt: Date.now() });
+    saveWriteQueue_(q);
+    renderSyncBanner();
+    flushWriteQueue(); // in case the failure was a one-off blip rather than truly offline
+  }
+
+  function renderSyncBanner() {
+    var q = loadWriteQueue_();
+    if (!q.length) { els.syncBanner.hidden = true; return; }
+    els.syncBanner.hidden = false;
+    els.syncBannerText.textContent = q.length + " change" + (q.length === 1 ? "" : "s") + " waiting to sync" +
+      (navigator.onLine === false ? " — offline" : "");
+  }
+
+  var writeQueueFlushing = false;
+  function flushWriteQueue() {
+    if (writeQueueFlushing) return;
+    var q = loadWriteQueue_();
+    if (!q.length) { renderSyncBanner(); return; }
+    writeQueueFlushing = true;
+    var job = q[0];
+    apiPost(job.payload).then(function (res) {
+      writeQueueFlushing = false;
+      var remaining = loadWriteQueue_();
+      remaining.shift();
+      saveWriteQueue_(remaining);
+      if (!res.ok) {
+        // A real answer from the server, just a "no" — not a connectivity problem, and
+        // retrying it unchanged would only fail the same way forever. Drop it and say so,
+        // rather than queue it forever or block the rest of the queue behind it.
+        renderSyncBanner();
+        refreshCatalog();
+        alert('A queued change ("' + job.label + '") couldn’t be saved and was dropped: ' + (res.error || "unknown error") + ". You may need to redo it.");
+        flushWriteQueue();
+        return;
+      }
+      renderSyncBanner();
+      if (!remaining.length) refreshCatalog(); // pulls confirmed data once everything's synced
+      flushWriteQueue();
+    }).catch(function (err) {
+      // Still offline — leave the queue as-is and try again later (the online event,
+      // the periodic check below, or the "Sync now" button will retry).
+      writeQueueFlushing = false;
+      renderSyncBanner();
+    });
   }
 
   // A sheet row with no real barcode might have the cell blank, or hold a placeholder
@@ -1355,8 +1479,14 @@
    "catalog","resultBody","recentList",
    "csvInput","resetBtn","importStatus","catalogSearch","catalogNote",
    "catalogYear","catalogMonth","catalogShowMore",
-   "tabScanBtn","tabInventoryBtn","scanView","inventoryView"
+   "tabScanBtn","tabInventoryBtn","scanView","inventoryView",
+   "syncBanner","syncBannerText","syncNowBtn"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
+
+  window.addEventListener("online", flushWriteQueue);
+  window.addEventListener("offline", renderSyncBanner);
+  setInterval(flushWriteQueue, 20000); // safety net — the "online" event doesn't always fire reliably on mobile
+  els.syncNowBtn.addEventListener("click", flushWriteQueue);
 
   var activeTab = "scan"; // "scan" | "inventory"
   function setTab(next) {
@@ -1495,9 +1625,10 @@
     var editingAllowed = canWrite() && s && !s.actionOpen && !s.editingName;
     var isEditing = editingAllowed && s.editBatch && s.editBatch.id === batch.id;
     var headHtml = "";
-    if (batch.notes || editingAllowed) {
+    if (batch.notes || editingAllowed || batch.pendingSync) {
       headHtml = '<div class="batch-row-head">' +
         (batch.notes ? '<span class="batch-tag">' + escapeHtml(batch.notes) + '</span>' : "") +
+        (batch.pendingSync ? '<span class="pending-sync-badge">Pending sync</span>' : "") +
         (editingAllowed ? '<button type="button" class="edit-link' + (isEditing ? " active" : "") + '" data-edit-id="' + escapeHtml(String(batch.id)) + '">' + (isEditing ? "Editing&hellip;" : "Edit") + '</button>' : "") +
       '</div>';
     }
@@ -1875,6 +2006,7 @@
       els.resultBody.innerHTML = '<div class="add-card"><h4>' + escapeHtml(label0) + '</h4><p class="add-sub">' + escapeHtml(name) + ' &middot; expiry ' + escapeHtml(parsed.raw) + ' &middot; qty ' + (qtyNum === null ? "N/A" : qtyNum) + '</p><p class="add-sub">Test file only — not written to your real sheet.</p></div>';
       pushRecent({ barcode: s.barcode, name: name, tone: "ok", ts: 0 });
       viewState = null;
+      refocusManualInput();
       renderCatalog();
       return;
     }
@@ -1882,7 +2014,7 @@
     var submitBtn = document.getElementById("submitAddBtn");
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Saving…"; }
 
-    apiPost({
+    var appendPayload = {
       op: "append",
       barcode: s.barcode,
       brand: brand,
@@ -1890,14 +2022,34 @@
       expiryRaw: parsed.raw,
       qty: qtyNum,
       notes: notesInput.trim()
-    }).then(function (res) {
+    };
+
+    apiPost(appendPayload).then(function (res) {
       if (!res.ok) throw new Error(res.error || "Could not save.");
       var label = isNewProduct ? "New product added" : "New batch (lot) added";
       els.resultBody.innerHTML = '<div class="add-card"><h4>' + escapeHtml(label) + '</h4><p class="add-sub">' + escapeHtml(name) + ' &middot; expiry ' + escapeHtml(parsed.raw) + ' &middot; qty ' + (qtyNum === null ? "N/A" : qtyNum) + '</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
       pushRecent({ barcode: s.barcode, name: name, tone: "ok", ts: 0 });
       viewState = null;
+      refocusManualInput();
       refreshCatalog();
     }).catch(function (err) {
+      if (err.isOffline) {
+        // No connection right now — record it locally so it's not lost, and queue the
+        // real write for whenever the connection's back.
+        ACTIVE_BATCHES.push({
+          id: Date.now(), barcode: s.barcode, hasBarcode: true, brand: brand, name: name,
+          productOnly: productOnly, expiry: parsed.iso, expiryRaw: parsed.raw, qty: qtyNum,
+          discount: "", notes: notesInput.trim(), row: null, pendingSync: true
+        });
+        queueWrite_(appendPayload, "add " + name);
+        var label1 = isNewProduct ? "New product added" : "New batch (lot) added";
+        els.resultBody.innerHTML = '<div class="add-card"><h4>' + escapeHtml(label1) + '</h4><p class="add-sub">' + escapeHtml(name) + ' &middot; expiry ' + escapeHtml(parsed.raw) + ' &middot; qty ' + (qtyNum === null ? "N/A" : qtyNum) + '</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
+        pushRecent({ barcode: s.barcode, name: name, tone: "ok", ts: 0 });
+        viewState = null;
+        refocusManualInput();
+        renderCatalog();
+        return;
+      }
       alert("Couldn’t save to the sheet: " + err.message);
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Save to inventory"; }
     });
@@ -1922,6 +2074,7 @@
       applyLocally();
       els.resultBody.innerHTML = '<div class="add-card"><h4>Renamed</h4><p class="add-sub">' + escapeHtml(newName) + '</p><p class="add-sub">Test file only — not written to your real sheet.</p></div>';
       viewState = null;
+      refocusManualInput();
       renderCatalog();
       return;
     }
@@ -1941,8 +2094,26 @@
       applyLocally();
       els.resultBody.innerHTML = '<div class="add-card"><h4>Renamed</h4><p class="add-sub">' + escapeHtml(newName) + '</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
       viewState = null;
+      refocusManualInput();
       refreshCatalog();
     }).catch(function (err) {
+      if (err.isOffline) {
+        applyLocally();
+        // Reflect it in the in-memory catalog too, not just the currently-open detail
+        // view, and flag it as not yet confirmed by the sheet.
+        ACTIVE_BATCHES.forEach(function (b) {
+          var matches = first.hasBarcode
+            ? (b.hasBarcode && normalizeBarcodeClient_(b.barcode) === normalizeBarcodeClient_(s.barcode))
+            : (b.row === first.row);
+          if (matches) { b.brand = brandVal; b.productOnly = productVal; b.name = newName; b.pendingSync = true; }
+        });
+        queueWrite_(payload, "rename to " + newName);
+        els.resultBody.innerHTML = '<div class="add-card"><h4>Renamed</h4><p class="add-sub">' + escapeHtml(newName) + '</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
+        viewState = null;
+        refocusManualInput();
+        renderCatalog();
+        return;
+      }
       alert("Couldn’t save to the sheet: " + err.message);
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Save"; }
     });
@@ -1980,6 +2151,7 @@
       els.resultBody.innerHTML = '<div class="add-card"><h4>Updated</h4><p class="add-sub">' + escapeHtml(b.name) + ' &middot; expiry ' + escapeHtml(formatMonthYear(b.expiry)) + ' &middot; now ' + newQty + ' units</p><p class="add-sub">Test file only — not written to your real sheet.</p></div>';
       pushRecent({ barcode: b.barcode, name: b.name, tone: tone0, ts: 0 });
       viewState = null;
+      refocusManualInput();
       renderCatalog();
       return;
     }
@@ -1999,8 +2171,30 @@
       els.resultBody.innerHTML = '<div class="add-card"><h4>Updated</h4><p class="add-sub">' + escapeHtml(b.name) + ' &middot; expiry ' + escapeHtml(formatMonthYear(b.expiry)) + ' &middot; now ' + b.qty + ' units</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
       pushRecent({ barcode: b.barcode, name: b.name, tone: tone, ts: 0 });
       viewState = null;
+      refocusManualInput();
       refreshCatalog();
     }).catch(function (err) {
+      if (err.isOffline) {
+        b.qty = newQty;
+        if (notesChanged) b.notes = notesTrimmed;
+        b.pendingSync = true;
+        // Reflect it in the in-memory catalog too, in case this batch object isn't the
+        // same reference as the one living there (e.g. after a network-confirmed lookup).
+        var catalogEntry = ACTIVE_BATCHES.find(function (x) { return x.row === b.row; });
+        if (catalogEntry && catalogEntry !== b) {
+          catalogEntry.qty = newQty;
+          if (notesChanged) catalogEntry.notes = notesTrimmed;
+          catalogEntry.pendingSync = true;
+        }
+        queueWrite_(payload, "update " + b.name);
+        var tone1 = qtyState(b).tone === "info" ? "ok" : qtyState(b).tone;
+        els.resultBody.innerHTML = '<div class="add-card"><h4>Updated</h4><p class="add-sub">' + escapeHtml(b.name) + ' &middot; expiry ' + escapeHtml(formatMonthYear(b.expiry)) + ' &middot; now ' + b.qty + ' units</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
+        pushRecent({ barcode: b.barcode, name: b.name, tone: tone1, ts: 0 });
+        viewState = null;
+        refocusManualInput();
+        renderCatalog();
+        return;
+      }
       alert("Couldn’t save to the sheet: " + err.message);
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Save"; }
     });
@@ -2011,6 +2205,18 @@
     var code = (rawCode || "").trim();
     if (!code) return;
     showResult(code);
+  }
+
+  // After a save clears the result screen, put the cursor straight back in the manual
+  // barcode field instead of leaving it wherever the Save button was — useful for
+  // typing the next code by hand, and important for anyone using a handheld
+  // scanner-gun that "types" into whatever field currently has focus.
+  function refocusManualInput() {
+    if (!els.manualInput) return;
+    els.manualInput.value = "";
+    setTimeout(function () {
+      if (!els.scanView.hidden) els.manualInput.focus();
+    }, 30);
   }
 
   els.manualForm.addEventListener("submit", function (e) {
@@ -2086,13 +2292,22 @@
     }
     inventoryBusyRow = batch.row;
     renderCatalog();
-    apiPost({ op: "adjust", row: batch.row, barcode: batch.barcode, delta: delta, sign: sign }).then(function (res) {
+    var adjustPayload = { op: "adjust", row: batch.row, barcode: batch.barcode, delta: delta, sign: sign };
+    apiPost(adjustPayload).then(function (res) {
       if (!res.ok) throw new Error(res.error || "Could not update.");
       batch.qty = res.newQty;
       inventoryBusyRow = null;
       renderCatalog();
     }).catch(function (err) {
       inventoryBusyRow = null;
+      if (err.isOffline) {
+        var current = (batch.qty === null || batch.qty === undefined) ? 0 : Number(batch.qty);
+        batch.qty = sign > 0 ? current + delta : Math.max(0, current - delta);
+        batch.pendingSync = true;
+        queueWrite_(adjustPayload, "update " + batch.name);
+        renderCatalog();
+        return;
+      }
       renderCatalog();
       alert("Couldn’t update the sheet: " + err.message);
     });
@@ -2161,6 +2376,9 @@
       var badges = single
         ? inventoryExpiryBadge(single) + inventoryQtyBadge(single)
         : '<span class="inv-badge warn">' + p.batches.length + ' batches</span><span class="inv-badge info">nearest: ' + escapeHtml(p.nearest.expiry ? p.nearest.expiryRaw : "no expiry on file") + '</span>';
+      if (p.batches.some(function (b) { return b.pendingSync; })) {
+        badges += '<span class="pending-sync-badge">Pending sync</span>';
+      }
       card.innerHTML = '<div class="inv-main">' +
         '<div class="inv-name">' + escapeHtml(p.name) + '</div>' +
         '<div class="inv-code">' + escapeHtml(p.hasBarcode ? p.barcode : "no barcode") + '</div>' +
@@ -2371,6 +2589,40 @@
   var captureCanvas = null;
   var captureCtx = null;
 
+  // --- Scan feedback (beep + vibration) ---
+  // A short confirmation the moment a barcode is actually decoded, so you don't have
+  // to watch the screen to know it registered. Vibration doesn't exist in iOS Safari
+  // at all (no navigator.vibrate there), so the beep via Web Audio is what actually
+  // carries this on an iPhone; it's also feature-detected everywhere else so nothing
+  // breaks on a browser/device missing either API.
+  var scanAudioCtx = null;
+  function unlockScanAudio() {
+    if (scanAudioCtx) return;
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    try { scanAudioCtx = new Ctx(); } catch (e) { /* no audio available — beep just won't play */ }
+  }
+  function playScanBeep() {
+    if (!scanAudioCtx) return;
+    try {
+      if (scanAudioCtx.state === "suspended") scanAudioCtx.resume();
+      var osc = scanAudioCtx.createOscillator();
+      var gain = scanAudioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.001, scanAudioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.2, scanAudioCtx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, scanAudioCtx.currentTime + 0.11);
+      osc.connect(gain).connect(scanAudioCtx.destination);
+      osc.start();
+      osc.stop(scanAudioCtx.currentTime + 0.12);
+    } catch (e) { /* ignore — feedback is a nicety, never worth breaking the scan over */ }
+  }
+  function scanFeedback() {
+    playScanBeep();
+    if (navigator.vibrate) { try { navigator.vibrate(80); } catch (e) {} }
+  }
+
   function getCodeReader() {
     if (codeReader) return codeReader;
     var hints = new Map();
@@ -2456,6 +2708,7 @@
           var binarizer = new window.ZXing.HybridBinarizer(luminanceSource);
           var binaryBitmap = new window.ZXing.BinaryBitmap(binarizer);
           var result = reader.decodeBitmap(binaryBitmap);
+          scanFeedback();
           handleCode(result.getText());
           stopScan();
           return;
@@ -2471,7 +2724,7 @@
     }).catch(scanFailed);
   }
 
-  els.scanBtn.addEventListener("click", startScan);
+  els.scanBtn.addEventListener("click", function () { unlockScanAudio(); startScan(); });
   els.stopBtn.addEventListener("click", stopScan);
   document.addEventListener("visibilitychange", function () { if (document.hidden) stopScan(); });
 
