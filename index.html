@@ -2667,6 +2667,31 @@
     els.stopBtn.style.display = "none";
   }
 
+  // iPhone's camera pipeline refocuses continuously by default, so a barcode a few
+  // inches away just works there. Many Android/Chrome cameras don't — they focus once
+  // when the stream opens and then hold that focus, so a close-up barcode can stay
+  // permanently blurry and never decode, even though the preview looks like it's
+  // "working" (camera open, frames flowing, nothing ever recognized). This explicitly
+  // asks the track for continuous autofocus where the device supports reporting/setting
+  // it; it's a no-op (feature-detected, wrapped in try/catch) anywhere that doesn't,
+  // iPhone included, so it can't make anything worse there.
+  function applyContinuousFocus_(stream) {
+    try {
+      var track = stream.getVideoTracks && stream.getVideoTracks()[0];
+      if (!track || !track.getCapabilities) return;
+      var caps = track.getCapabilities();
+      if (caps && caps.focusMode && caps.focusMode.indexOf("continuous") !== -1) {
+        track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(function () {});
+      }
+      // Not shown in the UI — just a breadcrumb in the console so a scan issue on a
+      // specific phone can be diagnosed from what the camera actually reported, rather
+      // than guessed at blind next time.
+      if (window.console && console.debug) {
+        console.debug("[scan] camera capabilities:", caps, "| current settings:", track.getSettings ? track.getSettings() : "n/a");
+      }
+    } catch (e) { /* getCapabilities/applyConstraints not supported here — nothing to do */ }
+  }
+
   function startScan() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.ZXing) {
       els.camNote.textContent = "Camera access isn't available in this browser. Use manual entry or the catalog below.";
@@ -2680,6 +2705,7 @@
     }).then(function (stream) {
       if (!scanning) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
       mediaStream = stream;
+      applyContinuousFocus_(stream);
       els.video.srcObject = stream;
       return els.video.play();
     }).then(function () {
