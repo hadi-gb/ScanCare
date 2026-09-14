@@ -12,12 +12,15 @@ It's been in daily use since it shipped, and every feature in here came from an 
 
 ## What it does
 
-- **Scan any barcode** with the phone camera (decoded client-side, works on iPhone and Android) or type it in manually — one screen shows everything on file for it, no separate "modes" to pick between first.
+- **Scan any barcode** with the phone camera (decoded client-side, works on iPhone and Android, with continuous autofocus so close-up labels stay sharp) or type it in manually — one screen shows everything on file for it, no separate "modes" to pick between first.
+- **Scans feel instant.** Recently-seen barcodes show their last-known details immediately from an on-device cache while the app quietly re-confirms against the live sheet in the background — no more staring at a spinner on every single scan.
+- **Keeps working through bad wifi.** If a save can't reach the sheet right away, it's kept locally, shown on screen as "Pending sync," and sent automatically the moment the connection comes back — walking the floor doesn't stop for a dead spot.
 - **Edit inline, per batch.** A product can have several expiry batches on the shelf at once; each one gets its own Edit link to adjust its quantity or notes directly, without retyping its expiry to find it again. Adding a genuinely new expiry lot is a clearly separate action, so the two never get confused.
 - **Rename a product** — brand and name — right from its details screen, updating every batch that shares its barcode in one shot.
 - **Browse and search live inventory**, sorted by nearest expiry, with color-coded warnings for low stock and items expiring soon.
 - **Real accounts, not a shared password.** Backend-verified login (PBKDF2-hashed passwords, per-user random salt, opaque session tokens, brute-force lockout) with two roles: warehouse/admin accounts can add and edit stock, read-only accounts can look everything up but never change it — enforced on the backend, not just hidden in the UI.
 - **A full audit log**, written server-side on every add, adjust, and rename — who did what, when, to which row — regardless of what the client claims about itself.
+- **Built for scanning fast, back to back.** The input field refocuses itself after every save, and a successful scan gets a beep and a vibration so you know it registered without having to look at the screen.
 - **Dark and light mode**, overridable per device, remembered locally.
 - **Live-synced to Google Sheets** — the sheet a warehouse team already knows how to use is the actual database; no separate admin panel to maintain.
 
@@ -36,7 +39,7 @@ It's been in daily use since it shipped, and every feature in here came from an 
 ## Tech stack
 
 - **Frontend:** a single self-contained HTML file — vanilla JavaScript, no framework or build step, so it can be hosted anywhere static files are served (this deployment runs on GitHub Pages). Barcode decoding runs entirely client-side via [ZXing](https://github.com/zxing-js/library).
-- **Backend:** [Google Apps Script](https://developers.google.com/apps-script), deployed as a Web App. All business logic, authentication, and authorization live here — the frontend is never trusted with anything sensitive.
+- **Backend:** [Google Apps Script](https://developers.google.com/apps-script), deployed as a Web App. All business logic, authentication, and authorization live here — the frontend is never trusted with anything sensitive. Inventory reads run through a short-lived server-side cache, invalidated on every write, to keep lookups fast as the sheet grows past 800+ SKUs.
 - **Database:** Google Sheets — one spreadsheet holds live inventory plus a backend-written audit log; a separate spreadsheet holds user accounts and active sessions.
 - **Auth:** PBKDF2-HMAC-SHA256 password hashing (hand-built from Apps Script's native `Utilities.computeHmacSha256Signature`, since there's no external crypto library available), a random per-user salt, opaque bearer session tokens, and role checks enforced on every write.
 
