@@ -870,6 +870,50 @@
   .dot.warn { background: var(--warn); }
   .dot.critical { background: var(--critical); }
 
+  /* Receiving mode */
+  .tally-bar {
+    background: var(--accent-soft);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .tally-label {
+    font-family: "Manrope", sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-strong);
+    margin-bottom: 3px;
+  }
+  .tally-sub { font-size: 0.72rem; color: var(--accent-strong); opacity: 0.72; }
+  .tally-reset {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-top: 6px;
+    font-family: "Work Sans", sans-serif;
+    font-weight: 500;
+    font-size: 0.7rem;
+    color: var(--accent-strong);
+    text-decoration: underline;
+    cursor: pointer;
+    width: auto;
+  }
+  .tally-count {
+    font-family: "Manrope", sans-serif;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--accent-strong);
+    line-height: 1;
+    white-space: nowrap;
+    text-align: right;
+  }
+  .tally-count small { display: block; font-size: 0.68rem; font-weight: 700; margin-top: 3px; }
+
   footer {
     padding: 16px 20px 24px;
     font-size: 0.72rem;
@@ -1038,6 +1082,7 @@
   <div class="tabbar" role="tablist" aria-label="Sections">
     <button class="tab-btn active" id="tabScanBtn" type="button" data-tab="scan">Scan</button>
     <button class="tab-btn" id="tabInventoryBtn" type="button" data-tab="inventory">Inventory</button>
+    <button class="tab-btn" id="tabReceivingBtn" type="button" data-tab="receiving" hidden>Receiving</button>
   </div>
 
   <main>
@@ -1045,7 +1090,8 @@
     <section aria-labelledby="scan-h">
       <h2 id="scan-h">Scan a barcode</h2>
       <p class="scan-note">Scan or enter any barcode to see its details. Adding or adjusting stock happens from there, if your account can make changes.</p>
-      <div class="scanner">
+      <div id="scanScannerSlot">
+      <div class="scanner" id="scannerBlock">
         <div class="viewfinder" id="viewfinder">
           <video id="video" playsinline muted></video>
           <div class="vf-placeholder">Camera preview appears here.<br>Tap "Start camera" to scan a real barcode.</div>
@@ -1057,6 +1103,7 @@
           <button class="btn-ghost" id="stopBtn" type="button" style="display:none;">Stop</button>
         </div>
         <p class="cam-note" id="camNote">Decodes barcodes right in your browser &mdash; works on iPhone and Android.</p>
+      </div>
       </div>
     </section>
 
@@ -1115,6 +1162,47 @@
       <div class="inv-list" id="catalog"></div>
       <button type="button" class="btn-ghost btn-small catalog-showmore" id="catalogShowMore" hidden>Show more</button>
       <p class="catalog-note" id="catalogNote"></p>
+    </section>
+   </div>
+
+   <div id="receivingView" hidden>
+    <section aria-labelledby="rcv-tally-h">
+      <h2 id="rcv-tally-h" class="sr-only">This session</h2>
+      <div class="tally-bar">
+        <div>
+          <div class="tally-label">This session</div>
+          <div class="tally-sub">Shipment received today</div>
+          <button type="button" class="tally-reset" id="receivingResetBtn">Reset</button>
+        </div>
+        <div class="tally-count"><span id="receivingTallyNum">0</span><small>items logged</small></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="rcv-scan-h">
+      <h2 id="rcv-scan-h">Scan to receive</h2>
+      <p class="scan-note">Point the camera at each box&rsquo;s barcode. Confirming an item logs it and keeps the camera running, ready for the next one &mdash; no need to tap Start camera again between items.</p>
+      <div id="receivingScannerSlot"></div>
+    </section>
+
+    <section aria-labelledby="rcv-card-h">
+      <h2 id="rcv-card-h">Scanned item</h2>
+      <div id="receivingCardBody"><p class="scan-note">Scan a barcode above, or enter one below, to get started.</p></div>
+    </section>
+
+    <section aria-labelledby="rcv-manual-h">
+      <h2 id="rcv-manual-h">Or enter a code</h2>
+      <form class="lookup-row" id="receivingManualForm">
+        <label class="sr-only" for="receivingManualInput">Barcode number</label>
+        <input id="receivingManualInput" type="text" inputmode="numeric" placeholder="e.g. 6291018100026" autocomplete="off">
+        <button class="btn-ghost" type="submit">Go</button>
+      </form>
+    </section>
+
+    <section aria-labelledby="rcv-log-h">
+      <h2 id="rcv-log-h">Logged this session</h2>
+      <div class="recent-list" id="receivingLogList">
+        <div class="recent-empty">Nothing logged yet this session.</div>
+      </div>
     </section>
    </div>
   </main>
@@ -1222,6 +1310,12 @@
     // re-render whatever's currently shown in case the role changed since it rendered.
     if (typeof renderResult === "function") renderResult();
     if (typeof renderCatalog === "function" && els.catalog) renderCatalog();
+    // Receiving mode only makes sense for accounts that can actually write stock —
+    // read-only ("viewer") accounts never see the tab at all.
+    if (els.tabReceivingBtn) {
+      els.tabReceivingBtn.hidden = !canWrite();
+      if (!canWrite() && activeTab === "receiving") setTab("scan");
+    }
   }
 
   function showApp() {
@@ -1479,7 +1573,10 @@
    "catalog","resultBody","recentList",
    "csvInput","resetBtn","importStatus","catalogSearch","catalogNote",
    "catalogYear","catalogMonth","catalogShowMore",
-   "tabScanBtn","tabInventoryBtn","scanView","inventoryView",
+   "tabScanBtn","tabInventoryBtn","tabReceivingBtn","scanView","inventoryView","receivingView",
+   "scannerBlock","scanScannerSlot","receivingScannerSlot",
+   "receivingCardBody","receivingManualForm","receivingManualInput","receivingLogList",
+   "receivingTallyNum","receivingResetBtn",
    "syncBanner","syncBannerText","syncNowBtn"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
 
@@ -1488,17 +1585,41 @@
   setInterval(flushWriteQueue, 20000); // safety net — the "online" event doesn't always fire reliably on mobile
   els.syncNowBtn.addEventListener("click", flushWriteQueue);
 
-  var activeTab = "scan"; // "scan" | "inventory"
+  // The camera viewfinder/buttons are ONE shared DOM block (see #scannerBlock) reused by
+  // both the Scan and Receiving tabs rather than duplicated — only one camera stream can
+  // sensibly run at a time anyway. moveScannerBlock() physically relocates it into
+  // whichever tab is active; it's only ever moved while the camera is stopped (see
+  // setTab below), so there's no risk of interrupting a live stream mid-move.
+  function moveScannerBlock(targetSlot) {
+    if (!els.scannerBlock || !targetSlot) return;
+    if (els.scannerBlock.parentNode !== targetSlot) targetSlot.appendChild(els.scannerBlock);
+  }
+
+  var activeTab = "scan"; // "scan" | "inventory" | "receiving"
   function setTab(next) {
+    if (next === "receiving" && !canWrite()) next = "scan"; // read-only accounts never see Receiving
+    var leavingCameraTab = (activeTab === "scan" || activeTab === "receiving") && activeTab !== next;
+    if (leavingCameraTab && scanning) stopScan();
     activeTab = next;
     els.tabScanBtn.classList.toggle("active", activeTab === "scan");
     els.tabInventoryBtn.classList.toggle("active", activeTab === "inventory");
+    els.tabReceivingBtn.classList.toggle("active", activeTab === "receiving");
     els.scanView.hidden = activeTab !== "scan";
     els.inventoryView.hidden = activeTab !== "inventory";
+    els.receivingView.hidden = activeTab !== "receiving";
     if (activeTab === "inventory") renderCatalog();
+    if (activeTab === "scan") {
+      moveScannerBlock(els.scanScannerSlot);
+      els.camNote.textContent = "Decodes barcodes right in your browser — works on iPhone and Android.";
+    }
+    if (activeTab === "receiving") {
+      moveScannerBlock(els.receivingScannerSlot);
+      els.camNote.textContent = "Camera stays on between scans — point it at the next box whenever you're ready.";
+    }
   }
   els.tabScanBtn.addEventListener("click", function () { setTab("scan"); });
   els.tabInventoryBtn.addEventListener("click", function () { setTab("inventory"); });
+  els.tabReceivingBtn.addEventListener("click", function () { setTab("receiving"); });
 
   var recent = [];
   try {
@@ -2224,6 +2345,255 @@
     handleCode(els.manualInput.value);
   });
 
+  // ============================================================================
+  // Receiving mode — a stripped-down scan → confirm → next loop for logging a big
+  // shipment fast, instead of opening the full product detail screen (every existing
+  // batch, notes, rename, edit links) for each of possibly dozens of SKUs. It writes
+  // through the exact same "adjust" (existing expiry lot) / "append" (new lot) ops as
+  // the regular Scan tab, so it gets the same offline queue, the same backend lock,
+  // and the same audit log for free — this is a different front door onto the same
+  // backend operations, not a new write path.
+  // ============================================================================
+  var receivingTally = 0;
+  var receivingLog = []; // { name, qty, expiryRaw }
+  var receivingCurrent = null; // { barcode, existing }
+
+  function renderReceivingTally() {
+    if (els.receivingTallyNum) els.receivingTallyNum.textContent = String(receivingTally);
+  }
+
+  function renderReceivingLog() {
+    if (!els.receivingLogList) return;
+    if (!receivingLog.length) {
+      els.receivingLogList.innerHTML = '<div class="recent-empty">Nothing logged yet this session.</div>';
+      return;
+    }
+    els.receivingLogList.innerHTML = receivingLog.map(function (e) {
+      return '<div class="recent-item"><span class="dot ok"></span>' +
+        '<span class="rname" style="flex:1;">' + escapeHtml(e.name) + '</span>' +
+        '<span class="rmeta">+' + e.qty + ' &middot; exp ' + escapeHtml(e.expiryRaw) + '</span></div>';
+    }).join("");
+  }
+
+  if (els.receivingResetBtn) {
+    els.receivingResetBtn.addEventListener("click", function () {
+      receivingTally = 0;
+      receivingLog = [];
+      renderReceivingTally();
+      renderReceivingLog();
+    });
+  }
+
+  // Mirrors refocusManualInput() above, for the Receiving tab's own manual-entry field.
+  function refocusReceivingInput() {
+    if (!els.receivingManualInput) return;
+    els.receivingManualInput.value = "";
+    setTimeout(function () {
+      if (!els.receivingView.hidden) els.receivingManualInput.focus();
+    }, 30);
+  }
+
+  function receivingFieldsHtml(mm, yyyy) {
+    return '<div class="field"><label for="rcvExpiryMonth">Expiry</label>' +
+      '<div class="expiry-inputs">' +
+        '<input id="rcvExpiryMonth" type="text" inputmode="numeric" placeholder="MM" maxlength="2" class="mono-input expiry-mm" value="' + escapeHtml(mm || "") + '">' +
+        '<span class="expiry-sep">/</span>' +
+        '<input id="rcvExpiryYear" type="text" inputmode="numeric" placeholder="YYYY" maxlength="4" class="mono-input expiry-yyyy" value="' + escapeHtml(yyyy || "") + '">' +
+      '</div></div>' +
+      '<div class="field"><label for="rcvQty">Quantity received</label><input id="rcvQty" type="number" inputmode="numeric" min="1" class="mono-input" placeholder="0"></div>';
+  }
+
+  // Same auto-advance-to-year-field behavior as wireExpiryInputs() above, scoped to
+  // Receiving mode's own field ids so the two never collide in the DOM at once.
+  function wireReceivingExpiryInputs() {
+    var mmEl = document.getElementById("rcvExpiryMonth");
+    var yyEl = document.getElementById("rcvExpiryYear");
+    if (mmEl && yyEl) {
+      mmEl.addEventListener("input", function () {
+        mmEl.value = mmEl.value.replace(/\D/g, "").slice(0, 2);
+        if (mmEl.value.length === 2) yyEl.focus();
+      });
+      yyEl.addEventListener("input", function () {
+        yyEl.value = yyEl.value.replace(/\D/g, "").slice(0, 4);
+      });
+    }
+  }
+
+  function renderReceivingNotFound(code) {
+    els.receivingCardBody.innerHTML =
+      '<div class="not-found">No product on file yet for <strong>' + escapeHtml(code) + '</strong>. ' +
+      'Switch to the <em>Scan</em> tab to add it as a new product, then come back here to keep receiving.</div>' +
+      '<div class="form-actions" style="margin-top:10px;"><button class="btn-ghost btn-small" id="rcvSkipBtn" type="button">Skip &amp; scan next</button></div>';
+    var skipBtn = document.getElementById("rcvSkipBtn");
+    if (skipBtn) {
+      skipBtn.addEventListener("click", function () {
+        receivingCurrent = null;
+        els.receivingCardBody.innerHTML = '<p class="scan-note">Scan a barcode above, or enter one below, to get started.</p>';
+        refocusReceivingInput();
+      });
+    }
+  }
+
+  function renderReceivingCard(code, existing) {
+    receivingCurrent = { barcode: code, existing: existing };
+    if (!existing.length) { renderReceivingNotFound(code); return; }
+    var first = existing[0];
+    // Existing batches sort nearest-expiry-first (see sortBatches) — the LAST one is the
+    // furthest-out, most-recently-stocked lot, and the most reasonable default guess for
+    // "this shipment is probably more of that" — but it's front-and-center and editable,
+    // never silently trusted.
+    var latest = existing[existing.length - 1];
+    var mm = "", yyyy = "";
+    if (latest.expiry) { mm = latest.expiry.slice(5, 7); yyyy = latest.expiry.slice(0, 4); }
+    els.receivingCardBody.innerHTML =
+      '<div class="add-card">' +
+        '<div class="rcv-top" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">' +
+          '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.76rem;color:var(--text-muted);">' + escapeHtml(code) + '</span>' +
+          '<span class="demo-badge">Scanned just now</span>' +
+        '</div>' +
+        '<h4>' + escapeHtml(first.name) + '</h4>' +
+        '<p class="add-sub">' + existing.length + ' batch' + (existing.length === 1 ? "" : "es") + ' already on file &mdash; confirm the expiry below, or edit it if this shipment carries a different date.</p>' +
+        receivingFieldsHtml(mm, yyyy) +
+        '<div class="form-actions"><button class="btn-primary" id="rcvConfirmBtn" type="button">Log item &amp; scan next</button></div>' +
+      '</div>';
+    wireReceivingExpiryInputs();
+    var confirmBtn = document.getElementById("rcvConfirmBtn");
+    var qtyEl = document.getElementById("rcvQty");
+    if (confirmBtn) confirmBtn.addEventListener("click", confirmReceiving);
+    if (qtyEl) {
+      qtyEl.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); confirmReceiving(); }
+      });
+      qtyEl.focus();
+    }
+  }
+
+  function handleReceivingCode(rawCode) {
+    var code = (rawCode || "").trim();
+    if (!code) return;
+    var cached = cachedMatchesForCode(code);
+    var existing = sortBatches(cached || batchesForBarcode(code));
+    renderReceivingCard(code, existing);
+    if (!existing.length) {
+      // Not found locally — double-check the live sheet before sending someone to the
+      // Scan tab to "add a new product" that actually already exists (e.g. the catalog
+      // cache just hadn't picked it up yet). Safe to swap the whole card here since the
+      // not-found view has no in-progress typing to lose.
+      apiLookup(code).then(function (matches) {
+        if (!receivingCurrent || receivingCurrent.barcode !== code) return; // superseded by a newer scan
+        if (matches.length) renderReceivingCard(code, sortBatches(matches));
+      }).catch(function () { /* stay on the not-found view — Skip or the Scan tab both still work */ });
+    } else {
+      // Already showing an editable card — refresh the underlying data quietly for
+      // accuracy at confirm time, but never re-render over whatever the user's mid-typing.
+      apiLookup(code).then(function (matches) {
+        if (!receivingCurrent || receivingCurrent.barcode !== code) return;
+        if (matches.length) receivingCurrent.existing = sortBatches(matches);
+      }).catch(function () { /* keep using the cached data already on screen */ });
+    }
+  }
+
+  function confirmReceiving() {
+    var cur = receivingCurrent;
+    if (!cur || !cur.existing.length) return;
+    var mmEl = document.getElementById("rcvExpiryMonth");
+    var yyEl = document.getElementById("rcvExpiryYear");
+    var qtyEl = document.getElementById("rcvQty");
+    var parsed = parseMMYYYY((mmEl.value || "") + "-" + (yyEl.value || ""));
+    if (!parsed) { alert('Please enter the expiry as MM/YYYY, e.g. "03/2027".'); return; }
+    var qtyNum = Number(qtyEl.value);
+    if (!qtyEl.value || isNaN(qtyNum) || qtyNum <= 0) { alert("Enter how many units you received."); return; }
+
+    var brand = cur.existing[0].brand, productOnly = cur.existing[0].productOnly, name = cur.existing[0].name;
+    var exactMatch = cur.existing.find(function (b) { return b.expiry === parsed.iso; });
+
+    var confirmBtn = document.getElementById("rcvConfirmBtn");
+    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "Saving…"; }
+
+    function resetBtn() {
+      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "Log item & scan next"; }
+    }
+
+    function onLogged(loggedQty) {
+      receivingTally++;
+      receivingLog.unshift({ name: name, qty: loggedQty, expiryRaw: parsed.raw });
+      receivingLog = receivingLog.slice(0, 8);
+      renderReceivingTally();
+      renderReceivingLog();
+      pushRecent({ barcode: cur.barcode, name: name, tone: "ok", ts: 0 });
+      receivingCurrent = null;
+      els.receivingCardBody.innerHTML = '<p class="scan-note">Logged. Scan the next barcode, or type one below.</p>';
+      refocusReceivingInput();
+    }
+
+    if (exactMatch) {
+      var adjustPayload = { op: "adjust", row: exactMatch.row, barcode: exactMatch.barcode, delta: qtyNum, sign: 1 };
+      if (usingImported) {
+        var currentQty = (exactMatch.qty === null || exactMatch.qty === undefined) ? 0 : Number(exactMatch.qty);
+        exactMatch.qty = currentQty + qtyNum;
+        onLogged(qtyNum);
+        renderCatalog();
+        return;
+      }
+      apiPost(adjustPayload).then(function (res) {
+        if (!res.ok) throw new Error(res.error || "Could not update.");
+        exactMatch.qty = res.newQty;
+        onLogged(qtyNum);
+        refreshCatalog();
+      }).catch(function (err) {
+        resetBtn();
+        if (err.isOffline) {
+          var currentQty = (exactMatch.qty === null || exactMatch.qty === undefined) ? 0 : Number(exactMatch.qty);
+          exactMatch.qty = currentQty + qtyNum;
+          exactMatch.pendingSync = true;
+          queueWrite_(adjustPayload, "update " + name);
+          onLogged(qtyNum);
+          renderCatalog();
+          return;
+        }
+        alert("Couldn’t save to the sheet: " + err.message);
+      });
+    } else {
+      var appendPayload = { op: "append", barcode: cur.barcode, brand: brand, product: productOnly, expiryRaw: parsed.raw, qty: qtyNum, notes: "" };
+      if (usingImported) {
+        ACTIVE_BATCHES.push({
+          id: Date.now(), barcode: cur.barcode, hasBarcode: true, brand: brand, name: name,
+          productOnly: productOnly, expiry: parsed.iso, expiryRaw: parsed.raw, qty: qtyNum,
+          discount: "", notes: "", row: null
+        });
+        onLogged(qtyNum);
+        renderCatalog();
+        return;
+      }
+      apiPost(appendPayload).then(function (res) {
+        if (!res.ok) throw new Error(res.error || "Could not save.");
+        onLogged(qtyNum);
+        refreshCatalog();
+      }).catch(function (err) {
+        resetBtn();
+        if (err.isOffline) {
+          ACTIVE_BATCHES.push({
+            id: Date.now(), barcode: cur.barcode, hasBarcode: true, brand: brand, name: name,
+            productOnly: productOnly, expiry: parsed.iso, expiryRaw: parsed.raw, qty: qtyNum,
+            discount: "", notes: "", row: null, pendingSync: true
+          });
+          queueWrite_(appendPayload, "add " + name);
+          onLogged(qtyNum);
+          renderCatalog();
+          return;
+        }
+        alert("Couldn’t save to the sheet: " + err.message);
+      });
+    }
+  }
+
+  if (els.receivingManualForm) {
+    els.receivingManualForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      handleReceivingCode(els.receivingManualInput.value);
+    });
+  }
+
   // --- Catalog / Inventory tab: grouped by barcode, sorted by nearest expiry ---
   var CATALOG_LIMIT = 60;
   var catalogVisibleCount = CATALOG_LIMIT;
@@ -2588,6 +2958,10 @@
   var scanTimer = null;
   var captureCanvas = null;
   var captureCtx = null;
+  // "lookup" (Scan tab — decode once, stop the camera, show the full detail screen) vs
+  // "receiving" (Receiving tab — decode, log it, keep the camera running for the next box).
+  var scanMode = "lookup";
+  var receivingCooldownUntil = 0;
 
   // --- Scan feedback (beep + vibration) ---
   // A short confirmation the moment a barcode is actually decoded, so you don't have
@@ -2692,12 +3066,14 @@
     } catch (e) { /* getCapabilities/applyConstraints not supported here — nothing to do */ }
   }
 
-  function startScan() {
+  function startScan(mode) {
+    scanMode = mode === "receiving" ? "receiving" : "lookup";
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.ZXing) {
       els.camNote.textContent = "Camera access isn't available in this browser. Use manual entry or the catalog below.";
       return;
     }
     scanning = true;
+    receivingCooldownUntil = 0;
     els.vfStatus.textContent = "Starting camera…";
     var reader = getCodeReader();
     navigator.mediaDevices.getUserMedia({
@@ -2717,6 +3093,10 @@
       var scanAttempts = 0;
       scanTimer = setInterval(function () {
         if (!scanning) return;
+        // Receiving mode keeps the camera running between items (see below) — pause
+        // decode attempts briefly right after a successful read so the same barcode,
+        // still sitting in frame, isn't logged twice before you've moved to the next box.
+        if (scanMode === "receiving" && Date.now() < receivingCooldownUntil) return;
         var vw = els.video.videoWidth, vh = els.video.videoHeight;
         if (!vw || !vh) return; // stream metadata not ready yet
         // Crop to the same region the on-screen corner brackets highlight (14% inset, matching the CSS),
@@ -2735,8 +3115,14 @@
           var binaryBitmap = new window.ZXing.BinaryBitmap(binarizer);
           var result = reader.decodeBitmap(binaryBitmap);
           scanFeedback();
-          handleCode(result.getText());
-          stopScan();
+          if (scanMode === "receiving") {
+            handleReceivingCode(result.getText());
+            receivingCooldownUntil = Date.now() + 1400;
+            els.vfStatus.textContent = "Got it — ready for the next one shortly…";
+          } else {
+            handleCode(result.getText());
+            stopScan();
+          }
           return;
         } catch (e) {
           // no barcode recognized in this frame — expected on most attempts, just keep trying.
@@ -2745,12 +3131,12 @@
           if (window.console && console.debug) console.debug("[scan] decode attempt failed:", e && e.message ? e.message : e);
         }
         scanAttempts++;
-        els.vfStatus.textContent = "Point camera at a barcode… (scanning #" + scanAttempts + ")";
+        els.vfStatus.textContent = (scanMode === "receiving" ? "Point at the next barcode… (scanning #" : "Point camera at a barcode… (scanning #") + scanAttempts + ")";
       }, 250);
     }).catch(scanFailed);
   }
 
-  els.scanBtn.addEventListener("click", function () { unlockScanAudio(); startScan(); });
+  els.scanBtn.addEventListener("click", function () { unlockScanAudio(); startScan(activeTab === "receiving" ? "receiving" : "lookup"); });
   els.stopBtn.addEventListener("click", stopScan);
   document.addEventListener("visibilitychange", function () { if (document.hidden) stopScan(); });
 
