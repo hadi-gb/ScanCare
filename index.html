@@ -932,6 +932,40 @@
   }
   .tally-count small { display: block; font-size: 0.68rem; font-weight: 700; margin-top: 3px; }
 
+  /* Dispatch mode */
+  .courier-picker { display: flex; gap: 6px; }
+  .courier-chip {
+    flex: 1;
+    padding: 9px 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+    font-size: 0.78rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+  }
+  .courier-chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+  .courier-chip .n { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 0.7rem; opacity: 0.8; }
+  .recent-item.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .recent-item.critical { border-color: var(--critical); background: var(--critical-soft); }
+  .dot.pending { background: var(--text-muted); }
+  .log-undo {
+    font-family: "Work Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.72rem;
+    color: var(--accent-strong);
+    text-decoration: underline;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
   footer {
     padding: 16px 20px 24px;
     font-size: 0.72rem;
@@ -1101,6 +1135,7 @@
     <button class="tab-btn active" id="tabScanBtn" type="button" data-tab="scan">Scan</button>
     <button class="tab-btn" id="tabInventoryBtn" type="button" data-tab="inventory">Inventory</button>
     <button class="tab-btn" id="tabReceivingBtn" type="button" data-tab="receiving" hidden>Receiving</button>
+    <button class="tab-btn" id="tabDispatchBtn" type="button" data-tab="dispatch" hidden>Dispatch</button>
   </div>
 
   <main>
@@ -1223,6 +1258,50 @@
       </div>
     </section>
    </div>
+
+   <div id="dispatchView" hidden>
+    <section aria-labelledby="dispatch-courier-h">
+      <h2 id="dispatch-courier-h">Courier</h2>
+      <div class="courier-picker" id="dispatchCourierPicker">
+        <button type="button" class="courier-chip" data-courier="ROADRUNNER">Roadrunner<span class="n" id="dispatchCountROADRUNNER">0</span></button>
+        <button type="button" class="courier-chip" data-courier="NET">Net<span class="n" id="dispatchCountNET">0</span></button>
+        <button type="button" class="courier-chip" data-courier="BEIRUT">Beirut<span class="n" id="dispatchCountBEIRUT">0</span></button>
+      </div>
+    </section>
+
+    <section aria-labelledby="dispatch-tally-h">
+      <h2 id="dispatch-tally-h" class="sr-only">Today's count</h2>
+      <div class="tally-bar">
+        <div>
+          <div class="tally-label" id="dispatchTallyLabel">Roadrunner &middot; today</div>
+          <div class="tally-sub" id="dispatchTallySub"></div>
+        </div>
+        <div class="tally-count"><span id="dispatchTallyNum">0</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="dispatch-scan-h">
+      <h2 id="dispatch-scan-h">Scan a packed order</h2>
+      <p class="scan-note">Point the camera at the order's barcode. Scans continuously, like Receiving mode &mdash; no need to tap between orders.</p>
+      <div id="dispatchScannerSlot"></div>
+    </section>
+
+    <section aria-labelledby="dispatch-manual-h">
+      <h2 id="dispatch-manual-h">Or enter a number</h2>
+      <form class="lookup-row" id="dispatchManualForm">
+        <label class="sr-only" for="dispatchManualInput">Order number</label>
+        <input id="dispatchManualInput" type="text" inputmode="numeric" placeholder="e.g. 334920 or sohati-334920" autocomplete="off">
+        <button class="btn-ghost" type="submit">Log</button>
+      </form>
+    </section>
+
+    <section aria-labelledby="dispatch-log-h">
+      <h2 id="dispatch-log-h">Logged this session</h2>
+      <div class="recent-list" id="dispatchLogList">
+        <div class="recent-empty">Nothing dispatched yet this session.</div>
+      </div>
+    </section>
+   </div>
   </main>
 
   <footer>
@@ -1333,6 +1412,11 @@
     if (els.tabReceivingBtn) {
       els.tabReceivingBtn.hidden = !canWrite();
       if (!canWrite() && activeTab === "receiving") setTab("scan");
+    }
+    // Dispatch writes to a courier sheet, same permission bar as Receiving.
+    if (els.tabDispatchBtn) {
+      els.tabDispatchBtn.hidden = !canWrite();
+      if (!canWrite() && activeTab === "dispatch") setTab("scan");
     }
   }
 
@@ -1591,10 +1675,13 @@
    "catalog","resultBody","recentList",
    "csvInput","resetBtn","importStatus","catalogSearch","catalogNote",
    "catalogYear","catalogMonth","catalogShowMore",
-   "tabScanBtn","tabInventoryBtn","tabReceivingBtn","scanView","inventoryView","receivingView",
-   "scannerBlock","scanScannerSlot","receivingScannerSlot",
+   "tabScanBtn","tabInventoryBtn","tabReceivingBtn","tabDispatchBtn",
+   "scanView","inventoryView","receivingView","dispatchView",
+   "scannerBlock","scanScannerSlot","receivingScannerSlot","dispatchScannerSlot",
    "receivingCardBody","receivingManualForm","receivingManualInput","receivingLogList",
    "receivingTallyNum","receivingResetBtn",
+   "dispatchCourierPicker","dispatchTallyLabel","dispatchTallySub","dispatchTallyNum",
+   "dispatchManualForm","dispatchManualInput","dispatchLogList",
    "syncBanner","syncBannerText","syncNowBtn"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
 
@@ -1613,18 +1700,21 @@
     if (els.scannerBlock.parentNode !== targetSlot) targetSlot.appendChild(els.scannerBlock);
   }
 
-  var activeTab = "scan"; // "scan" | "inventory" | "receiving"
+  var activeTab = "scan"; // "scan" | "inventory" | "receiving" | "dispatch"
   function setTab(next) {
-    if (next === "receiving" && !canWrite()) next = "scan"; // read-only accounts never see Receiving
-    var leavingCameraTab = (activeTab === "scan" || activeTab === "receiving") && activeTab !== next;
+    if ((next === "receiving" || next === "dispatch") && !canWrite()) next = "scan"; // read-only accounts never see these
+    var CAMERA_TABS = { scan: true, receiving: true, dispatch: true };
+    var leavingCameraTab = CAMERA_TABS[activeTab] && activeTab !== next;
     if (leavingCameraTab && scanning) stopScan();
     activeTab = next;
     els.tabScanBtn.classList.toggle("active", activeTab === "scan");
     els.tabInventoryBtn.classList.toggle("active", activeTab === "inventory");
     els.tabReceivingBtn.classList.toggle("active", activeTab === "receiving");
+    els.tabDispatchBtn.classList.toggle("active", activeTab === "dispatch");
     els.scanView.hidden = activeTab !== "scan";
     els.inventoryView.hidden = activeTab !== "inventory";
     els.receivingView.hidden = activeTab !== "receiving";
+    els.dispatchView.hidden = activeTab !== "dispatch";
     if (activeTab === "inventory") renderCatalog();
     if (activeTab === "scan") {
       moveScannerBlock(els.scanScannerSlot);
@@ -1634,10 +1724,16 @@
       moveScannerBlock(els.receivingScannerSlot);
       els.camNote.textContent = "Camera stays on between scans — point it at the next box whenever you're ready. Tap the preview if it looks out of focus.";
     }
+    if (activeTab === "dispatch") {
+      moveScannerBlock(els.dispatchScannerSlot);
+      els.camNote.textContent = "Scans continuously, like Receiving mode — point it at the next order whenever you're ready. Tap the preview if it looks out of focus.";
+      refreshDispatchStatus();
+    }
   }
   els.tabScanBtn.addEventListener("click", function () { setTab("scan"); });
   els.tabInventoryBtn.addEventListener("click", function () { setTab("inventory"); });
   els.tabReceivingBtn.addEventListener("click", function () { setTab("receiving"); });
+  els.tabDispatchBtn.addEventListener("click", function () { setTab("dispatch"); });
 
   var recent = [];
   try {
@@ -2648,6 +2744,221 @@
     });
   }
 
+  // ============================================================================
+  // Dispatch mode — scan (or type) a packed order's number, it's checked against
+  // Order Master (cancelled?) and every courier's tab for today (already dispatched
+  // elsewhere?), then logged into the selected courier's own column. Unlike Receiving,
+  // there's no confirm card — a scan either logs immediately or shows why it didn't,
+  // right in the log list below. Deliberately NOT offline-queued like append/adjust:
+  // the duplicate/cancelled checks only mean anything against the live sheet, so a
+  // scan made while offline is reported as failed rather than silently queued.
+  // ============================================================================
+  var DISPATCH_COURIERS = [
+    { key: "ROADRUNNER", label: "Roadrunner" },
+    { key: "NET", label: "Net" },
+    { key: "BEIRUT", label: "Beirut" }
+  ];
+  var DISPATCH_COURIER_KEY = "scancare_dispatch_courier_v1";
+  var dispatchCourier = "ROADRUNNER";
+  try {
+    var savedCourier = localStorage.getItem(DISPATCH_COURIER_KEY);
+    if (savedCourier && DISPATCH_COURIERS.some(function (c) { return c.key === savedCourier; })) dispatchCourier = savedCourier;
+  } catch (e) { /* storage unavailable — default courier stands */ }
+  var dispatchCounts = {};
+  var dispatchLog = [];
+
+  function dispatchCourierLabel(key) {
+    var c = DISPATCH_COURIERS.filter(function (x) { return x.key === key; })[0];
+    return c ? c.label : key;
+  }
+  // Informational only (which tab this courier writes into) — the backend decides the
+  // real tab name; this just mirrors that same "<PREFIX> <MONTH>" shape for display.
+  function dispatchTabNameClient_(key) {
+    var months = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+    return key + " " + months[new Date().getMonth()];
+  }
+  function extractOrderDigits_(raw) {
+    return String(raw || "").replace(/\D/g, "");
+  }
+  function nowTimeLabel_() {
+    try { return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch (e) { return ""; }
+  }
+
+  function renderDispatchTally() {
+    if (!els.dispatchTallyLabel) return;
+    els.dispatchTallyLabel.textContent = dispatchCourierLabel(dispatchCourier) + " · today";
+    els.dispatchTallySub.textContent = 'writes to "' + dispatchTabNameClient_(dispatchCourier) + '"';
+    var entry = dispatchCounts[dispatchCourier];
+    els.dispatchTallyNum.textContent = entry ? entry.count : 0;
+  }
+
+  function renderDispatchCourierPicker() {
+    if (!els.dispatchCourierPicker) return;
+    var chips = els.dispatchCourierPicker.querySelectorAll(".courier-chip");
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].classList.toggle("active", chips[i].getAttribute("data-courier") === dispatchCourier);
+    }
+  }
+
+  if (els.dispatchCourierPicker) {
+    var dispatchChips = els.dispatchCourierPicker.querySelectorAll(".courier-chip");
+    for (var dci = 0; dci < dispatchChips.length; dci++) {
+      dispatchChips[dci].addEventListener("click", function (e) {
+        dispatchCourier = e.currentTarget.getAttribute("data-courier");
+        try { localStorage.setItem(DISPATCH_COURIER_KEY, dispatchCourier); } catch (err) {}
+        renderDispatchCourierPicker();
+        renderDispatchTally();
+      });
+    }
+  }
+
+  function bumpDispatchCount(courierKey, delta) {
+    if (!dispatchCounts[courierKey]) dispatchCounts[courierKey] = { count: 0 };
+    dispatchCounts[courierKey].count = Math.max(0, (dispatchCounts[courierKey].count || 0) + delta);
+    var span = document.getElementById("dispatchCount" + courierKey);
+    if (span) span.textContent = dispatchCounts[courierKey].count;
+    if (courierKey === dispatchCourier) renderDispatchTally();
+  }
+
+  function refreshDispatchStatus() {
+    renderDispatchCourierPicker();
+    apiPost({ op: "dispatchStatus" }).then(function (res) {
+      if (!res || !res.ok) return;
+      dispatchCounts = res.couriers || {};
+      DISPATCH_COURIERS.forEach(function (c) {
+        var span = document.getElementById("dispatchCount" + c.key);
+        if (span) span.textContent = (dispatchCounts[c.key] && dispatchCounts[c.key].count) || 0;
+      });
+      renderDispatchTally();
+    }).catch(function () { /* status refresh is best-effort — never blocks scanning */ });
+  }
+
+  function renderDispatchLog() {
+    if (!els.dispatchLogList) return;
+    if (!dispatchLog.length) {
+      els.dispatchLogList.innerHTML = '<div class="recent-empty">Nothing dispatched yet this session.</div>';
+      return;
+    }
+    els.dispatchLogList.innerHTML = dispatchLog.map(function (e) {
+      var dotClass = e.status === "ok" ? "ok" : e.status === "warn" ? "warn" : e.status === "critical" ? "critical" : "pending";
+      var rowClass = e.status === "warn" ? " warn" : e.status === "critical" ? " critical" : "";
+      var message = e.status === "pending" ? "Checking…" : escapeHtml(e.message || "");
+      var undoHtml = e.canUndo ? '<span class="log-undo" data-undo-id="' + escapeHtml(e.id) + '">Undo</span>' : "";
+      return '<div class="recent-item' + rowClass + '">' +
+        '<span class="dot ' + dotClass + '"></span>' +
+        '<span class="rname" style="flex:1;">' + escapeHtml(e.code) + '</span>' +
+        '<span class="rmeta" style="flex:2;text-align:right;">' + message + '</span>' +
+        undoHtml +
+        '</div>';
+    }).join("");
+    var undoEls = els.dispatchLogList.querySelectorAll("[data-undo-id]");
+    for (var u = 0; u < undoEls.length; u++) {
+      undoEls[u].addEventListener("click", function (e) { dispatchUndo(e.currentTarget.getAttribute("data-undo-id")); });
+    }
+  }
+
+  function addDispatchLogEntry(entry) {
+    dispatchLog.unshift(entry);
+    if (dispatchLog.length > 30) dispatchLog.length = 30;
+    renderDispatchLog();
+  }
+  function updateDispatchLogEntry(id, patch) {
+    var entry = dispatchLog.filter(function (e) { return e.id === id; })[0];
+    if (!entry) return;
+    Object.assign(entry, patch);
+    renderDispatchLog();
+  }
+
+  function dispatchUndo(entryId) {
+    var entry = dispatchLog.filter(function (e) { return e.id === entryId; })[0];
+    if (!entry || !entry.undoPayload) return;
+    apiPost(Object.assign({ op: "dispatchUndo" }, entry.undoPayload)).then(function (res) {
+      if (res && res.authError) return;
+      if (res && res.ok) {
+        dispatchLog = dispatchLog.filter(function (e) { return e.id !== entryId; });
+        renderDispatchLog();
+        bumpDispatchCount(entry.courier, -1);
+      } else {
+        alert((res && res.error) || "Couldn’t undo that — it may have already changed.");
+      }
+    }).catch(function () {
+      alert("Couldn’t reach the sheet to undo that. Try again once you’re online.");
+    });
+  }
+
+  function playLowBeep() {
+    if (!scanAudioCtx) return;
+    try {
+      if (scanAudioCtx.state === "suspended") scanAudioCtx.resume();
+      var osc = scanAudioCtx.createOscillator();
+      var gain = scanAudioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 220;
+      gain.gain.setValueAtTime(0.001, scanAudioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.22, scanAudioCtx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, scanAudioCtx.currentTime + 0.22);
+      osc.connect(gain).connect(scanAudioCtx.destination);
+      osc.start();
+      osc.stop(scanAudioCtx.currentTime + 0.23);
+    } catch (e) { /* feedback is a nicety, never worth breaking the scan over */ }
+  }
+  function dispatchFeedback(isGood) {
+    if (isGood) {
+      playScanBeep();
+      if (navigator.vibrate) { try { navigator.vibrate(80); } catch (e) {} }
+    } else {
+      playLowBeep();
+      if (navigator.vibrate) { try { navigator.vibrate([60, 60, 60]); } catch (e) {} }
+    }
+  }
+
+  function handleDispatchCode(raw) {
+    var digits = extractOrderDigits_(raw);
+    if (!digits) return;
+    var courierAtScan = dispatchCourier;
+    var pendingId = "d" + Date.now() + "_" + Math.random().toString(36).slice(2);
+    addDispatchLogEntry({ id: pendingId, status: "pending", code: digits, courier: courierAtScan });
+
+    apiPost({ op: "dispatchScan", code: digits, courier: courierAtScan }).then(function (res) {
+      if (res && res.authError) {
+        updateDispatchLogEntry(pendingId, { status: "critical", message: "Session expired — please log in again." });
+        return;
+      }
+      if (res && res.ok) {
+        dispatchFeedback(true);
+        updateDispatchLogEntry(pendingId, {
+          status: "ok",
+          message: "Logged to " + dispatchCourierLabel(courierAtScan) + ", " + nowTimeLabel_(),
+          canUndo: true,
+          undoPayload: { tab: res.tab, row: res.row, col: res.col, expectedValue: res.formatted }
+        });
+        bumpDispatchCount(courierAtScan, 1);
+      } else {
+        dispatchFeedback(false);
+        var blocked = res && res.blocked;
+        updateDispatchLogEntry(pendingId, {
+          status: blocked === "cancelled" ? "critical" : blocked === "duplicate" ? "warn" : "critical",
+          message: (res && res.error) || "Couldn’t log that scan."
+        });
+      }
+    }).catch(function (err) {
+      dispatchFeedback(false);
+      updateDispatchLogEntry(pendingId, {
+        status: "critical",
+        message: err && err.isOffline ? "Offline — couldn’t reach the sheet. Try again once you’re back online." : "Something went wrong — try again."
+      });
+    });
+  }
+
+  if (els.dispatchManualForm) {
+    els.dispatchManualForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var val = els.dispatchManualInput.value;
+      els.dispatchManualInput.value = "";
+      handleDispatchCode(val);
+    });
+  }
+
   // --- Catalog / Inventory tab: grouped by barcode, sorted by nearest expiry ---
   var CATALOG_LIMIT = 60;
   var catalogVisibleCount = CATALOG_LIMIT;
@@ -3194,7 +3505,7 @@
   els.viewfinder.addEventListener("click", tapToFocus_);
 
   function startScan(mode) {
-    scanMode = mode === "receiving" ? "receiving" : "lookup";
+    scanMode = mode === "receiving" ? "receiving" : mode === "dispatch" ? "dispatch" : "lookup";
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.ZXing) {
       els.camNote.textContent = "Camera access isn't available in this browser. Use manual entry or the catalog below.";
       return;
@@ -3223,7 +3534,7 @@
         // Receiving mode keeps the camera running between items (see below) — pause
         // decode attempts briefly right after a successful read so the same barcode,
         // still sitting in frame, isn't logged twice before you've moved to the next box.
-        if (scanMode === "receiving" && Date.now() < receivingCooldownUntil) return;
+        if ((scanMode === "receiving" || scanMode === "dispatch") && Date.now() < receivingCooldownUntil) return;
         var vw = els.video.videoWidth, vh = els.video.videoHeight;
         if (!vw || !vh) return; // stream metadata not ready yet
         // Crop to the same region the on-screen corner brackets highlight (14% inset, matching the CSS),
@@ -3246,6 +3557,10 @@
             handleReceivingCode(result.getText());
             receivingCooldownUntil = Date.now() + 1400;
             els.vfStatus.textContent = "Got it — ready for the next one shortly…";
+          } else if (scanMode === "dispatch") {
+            handleDispatchCode(result.getText());
+            receivingCooldownUntil = Date.now() + 1400;
+            els.vfStatus.textContent = "Got it — checking…";
           } else {
             handleCode(result.getText());
             stopScan();
@@ -3258,12 +3573,12 @@
           if (window.console && console.debug) console.debug("[scan] decode attempt failed:", e && e.message ? e.message : e);
         }
         scanAttempts++;
-        els.vfStatus.textContent = (scanMode === "receiving" ? "Point at the next barcode… (scanning #" : "Point camera at a barcode… (scanning #") + scanAttempts + ")";
+        els.vfStatus.textContent = (scanMode === "receiving" || scanMode === "dispatch" ? "Point at the next barcode… (scanning #" : "Point camera at a barcode… (scanning #") + scanAttempts + ")";
       }, 250);
     }).catch(scanFailed);
   }
 
-  els.scanBtn.addEventListener("click", function () { unlockScanAudio(); startScan(activeTab === "receiving" ? "receiving" : "lookup"); });
+  els.scanBtn.addEventListener("click", function () { unlockScanAudio(); startScan(activeTab === "receiving" ? "receiving" : activeTab === "dispatch" ? "dispatch" : "lookup"); });
   els.stopBtn.addEventListener("click", stopScan);
   document.addEventListener("visibilitychange", function () { if (document.hidden) stopScan(); });
 
