@@ -232,6 +232,24 @@
   .viewfinder.live video { display: block; }
   .viewfinder.live .vf-placeholder { display: none; }
 
+  /* Tap-to-focus: a brief ring where you tapped, giving feedback that the tap
+     registered even before we know whether the phone's camera actually honored it. */
+  .focus-ring {
+    position: absolute;
+    width: 54px;
+    height: 54px;
+    margin-left: -27px;
+    margin-top: -27px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: focus-ring-pulse 0.5s ease-out forwards;
+  }
+  @keyframes focus-ring-pulse {
+    0% { transform: scale(1.3); opacity: 0.9; }
+    100% { transform: scale(0.85); opacity: 0; }
+  }
+
   .vf-placeholder {
     color: #8FA69A;
     font-size: 0.82rem;
@@ -1102,7 +1120,7 @@
           <button class="btn-primary" id="scanBtn" type="button">Start camera</button>
           <button class="btn-ghost" id="stopBtn" type="button" style="display:none;">Stop</button>
         </div>
-        <p class="cam-note" id="camNote">Decodes barcodes right in your browser &mdash; works on iPhone and Android.</p>
+        <p class="cam-note" id="camNote">Decodes barcodes right in your browser &mdash; works on iPhone and Android. Tap the preview if it looks out of focus.</p>
       </div>
       </div>
     </section>
@@ -1610,11 +1628,11 @@
     if (activeTab === "inventory") renderCatalog();
     if (activeTab === "scan") {
       moveScannerBlock(els.scanScannerSlot);
-      els.camNote.textContent = "Decodes barcodes right in your browser — works on iPhone and Android.";
+      els.camNote.textContent = "Decodes barcodes right in your browser — works on iPhone and Android. Tap the preview if it looks out of focus.";
     }
     if (activeTab === "receiving") {
       moveScannerBlock(els.receivingScannerSlot);
-      els.camNote.textContent = "Camera stays on between scans — point it at the next box whenever you're ready.";
+      els.camNote.textContent = "Camera stays on between scans — point it at the next box whenever you're ready. Tap the preview if it looks out of focus.";
     }
   }
   els.tabScanBtn.addEventListener("click", function () { setTab("scan"); });
@@ -3065,6 +3083,72 @@
       }
     } catch (e) { /* getCapabilities/applyConstraints not supported here — nothing to do */ }
   }
+
+  // Continuous autofocus doesn't always rack all the way into close (macro) range on
+  // its own on every Android camera — some report "continuous" as supported but the
+  // lens still hangs back a little short of a barcode held a few inches away (seen on
+  // a Galaxy S23: the preview is close but not fully sharp, and it never decodes).
+  // Tapping the preview gives the lens an explicit, aimed nudge: switch briefly to
+  // whatever single-point focus mode the device actually offers, aimed at the tapped
+  // spot, then hand control back to continuous a moment later. Every step here is
+  // feature-detected and wrapped so a device that ignores all of this just sees a
+  // harmless ring — nothing about the fix depends on this working everywhere.
+  function showFocusRing_(x, y) {
+    var ring = document.createElement("div");
+    ring.className = "focus-ring";
+    ring.style.left = x + "px";
+    ring.style.top = y + "px";
+    els.viewfinder.appendChild(ring);
+    setTimeout(function () { ring.remove(); }, 500);
+  }
+
+  function tapToFocus_(evt) {
+    if (!scanning || !mediaStream) return;
+    var rect = els.viewfinder.getBoundingClientRect();
+    var point = (evt.changedTouches && evt.changedTouches[0]) || evt;
+    var dispX = point.clientX - rect.left, dispY = point.clientY - rect.top;
+    if (dispX < 0 || dispY < 0 || dispX > rect.width || dispY > rect.height) return;
+    showFocusRing_(dispX, dispY);
+
+    var track = mediaStream.getVideoTracks && mediaStream.getVideoTracks()[0];
+    if (!track || !track.getCapabilities) return;
+    var caps;
+    try { caps = track.getCapabilities(); } catch (e) { return; }
+    if (!caps || !caps.focusMode) return; // this device doesn't expose any focus control to us
+
+    var advanced = {};
+    var vw = els.video.videoWidth, vh = els.video.videoHeight;
+    if (vw && vh && caps.pointsOfInterest) {
+      // Undo the CSS "object-fit: cover" crop to map the on-screen tap back to a
+      // normalized (0..1) point in the camera's actual source frame.
+      var scale = Math.max(rect.width / vw, rect.height / vh);
+      var scaledW = vw * scale, scaledH = vh * scale;
+      var offsetX = (scaledW - rect.width) / 2, offsetY = (scaledH - rect.height) / 2;
+      advanced.pointsOfInterest = [{
+        x: Math.min(1, Math.max(0, (dispX + offsetX) / scaledW)),
+        y: Math.min(1, Math.max(0, (dispY + offsetY) / scaledH))
+      }];
+    }
+
+    var pointMode = caps.focusMode.indexOf("single-shot") !== -1 ? "single-shot"
+      : (caps.focusMode.indexOf("manual") !== -1 ? "manual" : null);
+    if (pointMode) {
+      advanced.focusMode = pointMode;
+      track.applyConstraints({ advanced: [advanced] }).then(function () {
+        if (caps.focusMode.indexOf("continuous") !== -1) {
+          setTimeout(function () {
+            if (scanning) track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(function () {});
+          }, 1500);
+        }
+      }).catch(function () {});
+    } else if (advanced.pointsOfInterest) {
+      // No single-shot/manual mode on this device — still worth trying the point hint
+      // on its own, since some cameras honor it even while staying in continuous mode.
+      track.applyConstraints({ advanced: [advanced] }).catch(function () {});
+    }
+  }
+
+  els.viewfinder.addEventListener("click", tapToFocus_);
 
   function startScan(mode) {
     scanMode = mode === "receiving" ? "receiving" : "lookup";
