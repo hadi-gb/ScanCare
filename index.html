@@ -2437,12 +2437,40 @@
     }
   }
 
+  // A brand-new barcode mid-shipment used to mean "switch to the Scan tab, add it
+  // there, then come back" — a real interruption to a rapid-scan rhythm. Instead this
+  // renders the same brand/product fields the Scan tab's own "new barcode" flow uses,
+  // right here, so adding the product and logging this shipment's quantity is one save
+  // instead of a tab switch. Skip is still offered for whenever you'd rather not name
+  // it right now (e.g. you don't have the details, or it was a misread).
   function renderReceivingNotFound(code) {
     els.receivingCardBody.innerHTML =
-      '<div class="not-found">No product on file yet for <strong>' + escapeHtml(code) + '</strong>. ' +
-      'Switch to the <em>Scan</em> tab to add it as a new product, then come back here to keep receiving.</div>' +
-      '<div class="form-actions" style="margin-top:10px;"><button class="btn-ghost btn-small" id="rcvSkipBtn" type="button">Skip &amp; scan next</button></div>';
+      '<div class="add-card">' +
+        '<div class="rcv-top" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">' +
+          '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:0.76rem;color:var(--text-muted);">' + escapeHtml(code) + '</span>' +
+          '<span class="demo-badge">New barcode</span>' +
+        '</div>' +
+        '<h4>Not on file yet</h4>' +
+        '<p class="add-sub">Add it below to create it and log this shipment in one step &mdash; or skip it for now and handle it later from the Scan tab.</p>' +
+        '<div class="field"><label for="rcvNewBrand">Brand</label><input id="rcvNewBrand" type="text" placeholder="e.g. EUCERIN"></div>' +
+        '<div class="field"><label for="rcvNewProduct">Product name</label><input id="rcvNewProduct" type="text" placeholder="e.g. eye contour serum 15ML"></div>' +
+        receivingFieldsHtml("", "") +
+        '<div class="form-actions">' +
+          '<button class="btn-ghost btn-small" id="rcvSkipBtn" type="button">Skip &amp; scan next</button>' +
+          '<button class="btn-primary" id="rcvConfirmBtn" type="button">Add product &amp; log item</button>' +
+        '</div>' +
+      '</div>';
+    wireReceivingExpiryInputs();
+    var confirmBtn = document.getElementById("rcvConfirmBtn");
+    var qtyEl = document.getElementById("rcvQty");
     var skipBtn = document.getElementById("rcvSkipBtn");
+    var brandEl = document.getElementById("rcvNewBrand");
+    if (confirmBtn) confirmBtn.addEventListener("click", confirmReceiving);
+    if (qtyEl) {
+      qtyEl.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); confirmReceiving(); }
+      });
+    }
     if (skipBtn) {
       skipBtn.addEventListener("click", function () {
         receivingCurrent = null;
@@ -2450,6 +2478,7 @@
         refocusReceivingInput();
       });
     }
+    if (brandEl) brandEl.focus();
   }
 
   function renderReceivingCard(code, existing) {
@@ -2492,28 +2521,22 @@
     var cached = cachedMatchesForCode(code);
     var existing = sortBatches(cached || batchesForBarcode(code));
     renderReceivingCard(code, existing);
-    if (!existing.length) {
-      // Not found locally — double-check the live sheet before sending someone to the
-      // Scan tab to "add a new product" that actually already exists (e.g. the catalog
-      // cache just hadn't picked it up yet). Safe to swap the whole card here since the
-      // not-found view has no in-progress typing to lose.
-      apiLookup(code).then(function (matches) {
-        if (!receivingCurrent || receivingCurrent.barcode !== code) return; // superseded by a newer scan
-        if (matches.length) renderReceivingCard(code, sortBatches(matches));
-      }).catch(function () { /* stay on the not-found view — Skip or the Scan tab both still work */ });
-    } else {
-      // Already showing an editable card — refresh the underlying data quietly for
-      // accuracy at confirm time, but never re-render over whatever the user's mid-typing.
-      apiLookup(code).then(function (matches) {
-        if (!receivingCurrent || receivingCurrent.barcode !== code) return;
-        if (matches.length) receivingCurrent.existing = sortBatches(matches);
-      }).catch(function () { /* keep using the cached data already on screen */ });
-    }
+    // Quietly refresh from the live sheet in the background — this only ever updates
+    // receivingCurrent.existing, never the visible form, so it can't yank away brand/
+    // product/expiry/qty you're already mid-typing (whether this is a "found" card or
+    // the new-product form). confirmReceiving() re-reads receivingCurrent.existing at
+    // the moment you actually confirm, so even a "not found" that turns out to already
+    // exist (a stale cache) still resolves onto the real product instead of creating a
+    // duplicate — it just quietly ignores the brand/product you typed in that case.
+    apiLookup(code).then(function (matches) {
+      if (!receivingCurrent || receivingCurrent.barcode !== code) return; // superseded by a newer scan
+      if (matches.length) receivingCurrent.existing = sortBatches(matches);
+    }).catch(function () { /* keep using whatever's already on screen */ });
   }
 
   function confirmReceiving() {
     var cur = receivingCurrent;
-    if (!cur || !cur.existing.length) return;
+    if (!cur) return;
     var mmEl = document.getElementById("rcvExpiryMonth");
     var yyEl = document.getElementById("rcvExpiryYear");
     var qtyEl = document.getElementById("rcvQty");
@@ -2522,14 +2545,27 @@
     var qtyNum = Number(qtyEl.value);
     if (!qtyEl.value || isNaN(qtyNum) || qtyNum <= 0) { alert("Enter how many units you received."); return; }
 
-    var brand = cur.existing[0].brand, productOnly = cur.existing[0].productOnly, name = cur.existing[0].name;
-    var exactMatch = cur.existing.find(function (b) { return b.expiry === parsed.iso; });
+    var brand, productOnly, name;
+    if (cur.existing.length) {
+      brand = cur.existing[0].brand; productOnly = cur.existing[0].productOnly; name = cur.existing[0].name;
+    } else {
+      // The inline "new product" form (renderReceivingNotFound) — nothing on file to
+      // borrow a name from, so it comes straight from what was just typed.
+      var brandEl = document.getElementById("rcvNewBrand");
+      var productEl = document.getElementById("rcvNewProduct");
+      brand = ((brandEl && brandEl.value) || "").trim();
+      productOnly = ((productEl && productEl.value) || "").trim();
+      if (!productOnly) { alert("Please enter a product name."); return; }
+      name = brand ? (brand + " — " + productOnly) : productOnly;
+    }
+    var exactMatch = cur.existing.length ? cur.existing.find(function (b) { return b.expiry === parsed.iso; }) : null;
 
     var confirmBtn = document.getElementById("rcvConfirmBtn");
+    var confirmBtnLabel = confirmBtn ? confirmBtn.textContent : "";
     if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "Saving…"; }
 
     function resetBtn() {
-      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "Log item & scan next"; }
+      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = confirmBtnLabel; }
     }
 
     function onLogged(loggedQty) {
