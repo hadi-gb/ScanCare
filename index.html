@@ -1291,8 +1291,17 @@
       <form class="lookup-row" id="dispatchManualForm">
         <label class="sr-only" for="dispatchManualInput">Order number</label>
         <input id="dispatchManualInput" type="text" inputmode="numeric" placeholder="e.g. 334920 or sohati-334920" autocomplete="off">
-        <button class="btn-ghost" type="submit">Log</button>
+        <button class="btn-ghost" type="submit">Add</button>
       </form>
+    </section>
+
+    <section aria-labelledby="dispatch-pending-h">
+      <h2 id="dispatch-pending-h">Ready to dispatch (<span id="dispatchPendingNum">0</span>)</h2>
+      <p class="scan-note">Keep scanning &mdash; nothing is sent to the sheet until you tap Dispatch. Your list is saved even if you close the app.</p>
+      <button class="btn-primary" type="button" id="dispatchCommitBtn" disabled>Dispatch</button>
+      <div class="recent-list" id="dispatchPendingList">
+        <div class="recent-empty">Nothing scanned yet.</div>
+      </div>
     </section>
 
     <section aria-labelledby="dispatch-log-h">
@@ -1682,6 +1691,7 @@
    "receivingTallyNum","receivingResetBtn",
    "dispatchCourierPicker","dispatchTallyLabel","dispatchTallySub","dispatchTallyNum",
    "dispatchManualForm","dispatchManualInput","dispatchLogList",
+   "dispatchPendingList","dispatchPendingNum","dispatchCommitBtn",
    "syncBanner","syncBannerText","syncNowBtn"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
 
@@ -1728,6 +1738,7 @@
       moveScannerBlock(els.dispatchScannerSlot);
       els.camNote.textContent = "Scans continuously, like Receiving mode — point it at the next order whenever you're ready. Tap the preview if it looks out of focus.";
       refreshDispatchStatus();
+      renderDispatchPending();
     }
   }
   els.tabScanBtn.addEventListener("click", function () { setTab("scan"); });
@@ -2767,6 +2778,23 @@
   var dispatchCounts = {};
   var dispatchLog = [];
 
+  // Scanned-but-not-yet-written orders, kept locally per courier so switching couriers
+  // never loses either queue. Persisted to localStorage (same pattern as the write
+  // queue and recent-scans list elsewhere in this file) so a reload or a crash mid-shift
+  // doesn't lose a stack of scans that were never actually sent to the sheet yet.
+  var DISPATCH_PENDING_KEY = "scancare_dispatch_pending_v1";
+  function loadDispatchPending_() {
+    var out = {};
+    var raw = {};
+    try { raw = JSON.parse(localStorage.getItem(DISPATCH_PENDING_KEY) || "{}"); } catch (e) { raw = {}; }
+    DISPATCH_COURIERS.forEach(function (c) { out[c.key] = Array.isArray(raw[c.key]) ? raw[c.key] : []; });
+    return out;
+  }
+  function saveDispatchPending_() {
+    try { localStorage.setItem(DISPATCH_PENDING_KEY, JSON.stringify(dispatchPending)); } catch (e) { /* storage unavailable — queue just won't survive a reload */ }
+  }
+  var dispatchPending = loadDispatchPending_();
+
   function dispatchCourierLabel(key) {
     var c = DISPATCH_COURIERS.filter(function (x) { return x.key === key; })[0];
     return c ? c.label : key;
@@ -2808,6 +2836,7 @@
         try { localStorage.setItem(DISPATCH_COURIER_KEY, dispatchCourier); } catch (err) {}
         renderDispatchCourierPicker();
         renderDispatchTally();
+        renderDispatchPending();
       });
     }
   }
@@ -2912,42 +2941,116 @@
     }
   }
 
+  // Scanning is fully local and instant — no network call per scan — which is what
+  // makes back-to-back scanning (tens of orders in a row) actually fast. Nothing is
+  // checked against Order Master or the other couriers' tabs until Dispatch is
+  // pressed; the only check possible before then is "is this already sitting in
+  // MY OWN pending list", which is free to do locally.
+  function renderDispatchPending() {
+    if (!els.dispatchPendingList) return;
+    var list = dispatchPending[dispatchCourier] || [];
+    if (els.dispatchPendingNum) els.dispatchPendingNum.textContent = list.length;
+    if (els.dispatchCommitBtn) {
+      els.dispatchCommitBtn.disabled = !list.length;
+      els.dispatchCommitBtn.textContent = list.length
+        ? ("Dispatch " + list.length + " to " + dispatchCourierLabel(dispatchCourier))
+        : "Dispatch";
+    }
+    if (!list.length) {
+      els.dispatchPendingList.innerHTML = '<div class="recent-empty">Nothing scanned yet.</div>';
+      return;
+    }
+    els.dispatchPendingList.innerHTML = list.map(function (e) {
+      return '<div class="recent-item"><span class="rname" style="flex:1;">' + escapeHtml(e.code) + '</span>' +
+        '<span class="log-undo" data-remove-id="' + escapeHtml(e.id) + '">Remove</span></div>';
+    }).join("");
+    var removeEls = els.dispatchPendingList.querySelectorAll("[data-remove-id]");
+    for (var i = 0; i < removeEls.length; i++) {
+      removeEls[i].addEventListener("click", function (e) { removeDispatchPending(e.currentTarget.getAttribute("data-remove-id")); });
+    }
+  }
+
+  function addDispatchPending(digits) {
+    var list = dispatchPending[dispatchCourier] || (dispatchPending[dispatchCourier] = []);
+    var already = list.some(function (e) { return e.code === digits; });
+    if (already) {
+      dispatchFeedback(false); // low beep — already queued, not added again
+      return;
+    }
+    list.push({ id: "p" + Date.now() + "_" + Math.random().toString(36).slice(2), code: digits });
+    saveDispatchPending_();
+    dispatchFeedback(true);
+    renderDispatchPending();
+  }
+
+  function removeDispatchPending(id) {
+    dispatchPending[dispatchCourier] = (dispatchPending[dispatchCourier] || []).filter(function (e) { return e.id !== id; });
+    saveDispatchPending_();
+    renderDispatchPending();
+  }
+
   function handleDispatchCode(raw) {
     var digits = extractOrderDigits_(raw);
     if (!digits) return;
-    var courierAtScan = dispatchCourier;
-    var pendingId = "d" + Date.now() + "_" + Math.random().toString(36).slice(2);
-    addDispatchLogEntry({ id: pendingId, status: "pending", code: digits, courier: courierAtScan });
+    addDispatchPending(digits);
+  }
 
-    apiPost({ op: "dispatchScan", code: digits, courier: courierAtScan }).then(function (res) {
-      if (res && res.authError) {
-        updateDispatchLogEntry(pendingId, { status: "critical", message: "Session expired — please log in again." });
+  // The one network call for this whole batch — every cancelled/duplicate check and
+  // the actual write all happen together, server-side, in handleDispatchBatch_. The
+  // pending list is only cleared once a real answer comes back; a failed request
+  // (offline, sheet busy) leaves it untouched so nothing scanned is ever lost, and
+  // Dispatch can just be pressed again once the connection's back.
+  function commitDispatchBatch() {
+    var courierAtCommit = dispatchCourier;
+    var items = dispatchPending[courierAtCommit] || [];
+    if (!items.length || !els.dispatchCommitBtn) return;
+    var originalLabel = els.dispatchCommitBtn.textContent;
+    els.dispatchCommitBtn.disabled = true;
+    els.dispatchCommitBtn.textContent = "Dispatching…";
+
+    apiPost({ op: "dispatchBatch", courier: courierAtCommit, codes: items.map(function (e) { return e.code; }) }).then(function (res) {
+      els.dispatchCommitBtn.disabled = false;
+      els.dispatchCommitBtn.textContent = originalLabel;
+      if (res && res.authError) return;
+      if (!res || !res.ok) {
+        alert((res && res.error) || "Couldn’t reach the sheet — nothing was lost, try Dispatch again.");
         return;
       }
-      if (res && res.ok) {
-        dispatchFeedback(true);
-        updateDispatchLogEntry(pendingId, {
-          status: "ok",
-          message: "Logged to " + dispatchCourierLabel(courierAtScan) + ", " + nowTimeLabel_(),
-          canUndo: true,
-          undoPayload: { tab: res.tab, row: res.row, col: res.col, expectedValue: res.formatted }
-        });
-        bumpDispatchCount(courierAtScan, 1);
-      } else {
-        dispatchFeedback(false);
-        var blocked = res && res.blocked;
-        updateDispatchLogEntry(pendingId, {
-          status: blocked === "cancelled" ? "critical" : blocked === "duplicate" ? "warn" : "critical",
-          message: (res && res.error) || "Couldn’t log that scan."
-        });
-      }
-    }).catch(function (err) {
-      dispatchFeedback(false);
-      updateDispatchLogEntry(pendingId, {
-        status: "critical",
-        message: err && err.isOffline ? "Offline — couldn’t reach the sheet. Try again once you’re back online." : "Something went wrong — try again."
+      var okCount = 0;
+      (res.results || []).forEach(function (r) {
+        var id = "d" + Date.now() + "_" + Math.random().toString(36).slice(2);
+        if (r.ok) {
+          okCount++;
+          addDispatchLogEntry({
+            id: id, status: "ok", code: r.code,
+            message: "Logged to " + dispatchCourierLabel(courierAtCommit) + ", " + nowTimeLabel_(),
+            canUndo: true, courier: courierAtCommit,
+            undoPayload: { tab: r.tab, row: r.row, col: r.col, expectedValue: r.formatted }
+          });
+        } else {
+          addDispatchLogEntry({
+            id: id,
+            status: r.blocked === "cancelled" ? "critical" : r.blocked === "duplicate" ? "warn" : "critical",
+            code: r.code, message: r.error || "Couldn’t log that scan.", courier: courierAtCommit
+          });
+        }
       });
+      dispatchFeedback(okCount > 0);
+      if (okCount) bumpDispatchCount(courierAtCommit, okCount);
+      dispatchPending[courierAtCommit] = [];
+      saveDispatchPending_();
+      renderDispatchPending();
+    }).catch(function (err) {
+      els.dispatchCommitBtn.disabled = false;
+      els.dispatchCommitBtn.textContent = originalLabel;
+      alert(err && err.isOffline
+        ? "Offline — couldn’t reach the sheet. Your scanned list is still saved; try Dispatch again once you’re back online."
+        : "Something went wrong — nothing was lost, try Dispatch again.");
     });
+  }
+
+  if (els.dispatchCommitBtn) {
+    els.dispatchCommitBtn.addEventListener("click", commitDispatchBatch);
   }
 
   if (els.dispatchManualForm) {
@@ -3560,7 +3663,7 @@
           } else if (scanMode === "dispatch") {
             handleDispatchCode(result.getText());
             receivingCooldownUntil = Date.now() + 1400;
-            els.vfStatus.textContent = "Got it — checking…";
+            els.vfStatus.textContent = "Added — ready for the next one…";
           } else {
             handleCode(result.getText());
             stopScan();
