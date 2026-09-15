@@ -2827,15 +2827,22 @@
       els.catalog.appendChild(card);
     });
     var filtered = !!(filterText || yearFilter || monthFilter);
+    // Distinct products (list.length) and total rows (ACTIVE_BATCHES.length) are
+    // different numbers on purpose — one product can have several expiry batches,
+    // each its own row in MASTER INVENTORY. Only show the row count when nothing is
+    // filtered, since it's a whole-sheet total and would be confusing sitting next to
+    // a filtered product count.
+    var totalRows = ACTIVE_BATCHES.length;
+    var rowsSuffix = (!filtered && totalRows) ? " (" + totalRows + " row" + (totalRows === 1 ? "" : "s") + " on file)" : "";
     els.catalogShowMore.hidden = shown.length >= list.length;
     if (catalogLoading && !ACTIVE_BATCHES.length) {
       els.catalogNote.textContent = "Loading your MASTER INVENTORY sheet…";
     } else if (!shown.length) {
       els.catalogNote.textContent = filtered ? "No products match your search/filters." : "No products loaded.";
     } else if (list.length > shown.length) {
-      els.catalogNote.textContent = "Showing " + shown.length + " of " + list.length + " matching product" + (list.length === 1 ? "" : "s") + ", sorted by nearest expiry — tap Show more to see more.";
+      els.catalogNote.textContent = "Showing " + shown.length + " of " + list.length + " matching product" + (list.length === 1 ? "" : "s") + rowsSuffix + ", sorted by nearest expiry — tap Show more to see more.";
     } else {
-      els.catalogNote.textContent = list.length + " distinct product" + (list.length === 1 ? "" : "s") + (filtered ? " matching your search/filters" : "") + ", sorted by nearest expiry" + (usingImported ? " — from " + importedFilename : " — from your MASTER INVENTORY sheet, live");
+      els.catalogNote.textContent = list.length + " distinct product" + (list.length === 1 ? "" : "s") + (filtered ? " matching your search/filters" : "") + rowsSuffix + ", sorted by nearest expiry" + (usingImported ? " — from " + importedFilename : " — from your MASTER INVENTORY sheet, live");
     }
   }
 
