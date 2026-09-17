@@ -1015,6 +1015,39 @@
   .dispatch-flash.ok { background: var(--ok); }
   .dispatch-flash.bad { background: var(--warn); }
 
+  /* A quieter, persistent companion to the flash above — the flash fades after a
+     moment, but the question "what actually made it into the sheet, for real" can
+     come up seconds or minutes later (e.g. right after finishing a batch). This
+     stays put until the next successful dispatch replaces it. */
+  .dispatch-last {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--surface-2, var(--accent-soft));
+    border: 1px solid var(--border);
+    font-family: "Work Sans", sans-serif;
+  }
+  .dispatch-last-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .dispatch-last-value {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   footer {
     padding: 16px 20px 24px;
     font-size: 0.72rem;
@@ -1310,6 +1343,10 @@
 
    <div id="dispatchView" hidden>
     <div class="dispatch-flash" id="dispatchFlash" aria-live="polite"></div>
+    <div class="dispatch-last" id="dispatchLast" hidden>
+      <span class="dispatch-last-label">Last dispatched</span>
+      <span class="dispatch-last-value" id="dispatchLastValue">&mdash;</span>
+    </div>
     <section aria-labelledby="dispatch-courier-h">
       <h2 id="dispatch-courier-h">Courier</h2>
       <div class="courier-picker" id="dispatchCourierPicker">
@@ -1576,19 +1613,36 @@
   // to the session logic that needs it first). Every call attaches whatever session
   // token login produced; the backend is the only thing that decides whether that
   // token is real, unexpired, and allowed to do what's being asked.
+  // A dead/hanging mobile connection otherwise leaves fetch() neither resolving nor
+  // rejecting for an indefinite time — the UI (e.g. the Dispatch button) would just
+  // sit on "Dispatching…" forever with no way to tell if it's stuck or still working.
+  // 45s comfortably covers even a large batch dispatch on a slow connection, but
+  // still gives up and reports back rather than hanging silently.
+  var API_TIMEOUT_MS = 45000;
+
   function apiPost(body) {
     var payload = Object.assign({}, body, { token: getSessionToken() });
+    var controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var timeoutId = controller ? setTimeout(function () { controller.abort(); }, API_TIMEOUT_MS) : null;
     // No explicit Content-Type: keeps this a CORS-safelisted "simple request"
     // (browser defaults to text/plain), which avoids a blocked preflight OPTIONS call.
-    return fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+    return fetch(API_URL, { method: "POST", body: JSON.stringify(payload), signal: controller ? controller.signal : undefined })
       .catch(function (netErr) {
         // fetch() itself rejecting (not a bad response, an actual failure to reach the
         // network at all) is the one reliable "you're offline / no signal" signal in the
         // browser. Tag it distinctly so callers can tell this apart from a normal
         // ok:false business error (like a validation failure), which should NEVER be
-        // queued for later — only a real connectivity failure should be.
-        var e = new Error("Couldn’t reach your sheet — check your connection.");
-        e.isOffline = true;
+        // queued for later — only a real connectivity failure should be. An abort from
+        // the timeout above is tagged separately, so callers can tell "gave up waiting"
+        // from "never had a signal at all".
+        var e;
+        if (netErr && netErr.name === "AbortError") {
+          e = new Error("That took too long to reach the sheet — check your connection and try again.");
+          e.isTimeout = true;
+        } else {
+          e = new Error("Couldn’t reach your sheet — check your connection.");
+          e.isOffline = true;
+        }
         throw e;
       })
       .then(function (res) { return res.json(); })
@@ -1601,7 +1655,8 @@
           showLoginScreen(data.error || "Your session expired — please log in again.");
         }
         return data;
-      });
+      })
+      .finally(function () { if (timeoutId) clearTimeout(timeoutId); });
   }
 
   // ============================================================================
@@ -1745,7 +1800,7 @@
    "dispatchCourierPicker","dispatchTallyLabel","dispatchTallySub","dispatchTallyNum",
    "dispatchManualForm","dispatchManualInput","dispatchLogList",
    "dispatchPendingList","dispatchPendingNum","dispatchCommitBtn",
-   "dispatchRefreshBtn","dispatchFlash",
+   "dispatchRefreshBtn","dispatchFlash","dispatchLast","dispatchLastValue",
    "syncBanner","syncBannerText","syncNowBtn"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
 
@@ -2928,6 +2983,11 @@
     els.dispatchRefreshBtn.addEventListener("click", function () { refreshDispatchStatus(); });
   }
 
+  // Which log entry (if any) currently has its "move to another courier" picker
+  // expanded — only one at a time, collapsed again as soon as a target is chosen
+  // or Cancel is tapped.
+  var dispatchMovingEntryId = null;
+
   function renderDispatchLog() {
     if (!els.dispatchLogList) return;
     if (!dispatchLog.length) {
@@ -2938,17 +2998,52 @@
       var dotClass = e.status === "ok" ? "ok" : e.status === "warn" ? "warn" : e.status === "critical" ? "critical" : "pending";
       var rowClass = e.status === "warn" ? " warn" : e.status === "critical" ? " critical" : "";
       var message = e.status === "pending" ? "Checking…" : escapeHtml(e.message || "");
-      var undoHtml = e.canUndo ? '<span class="log-undo" data-undo-id="' + escapeHtml(e.id) + '">Undo</span>' : "";
+      var actionsHtml = "";
+      if (e.canUndo) {
+        if (dispatchMovingEntryId === e.id) {
+          // Only the couriers this ISN'T currently sitting under — moving it to
+          // where it already is wouldn't mean anything.
+          actionsHtml = DISPATCH_COURIERS.filter(function (c) { return c.key !== e.courier; }).map(function (c) {
+            return '<span class="log-undo" data-move-target="' + c.key + '" data-move-id="' + escapeHtml(e.id) + '">' + escapeHtml(c.label) + '</span>';
+          }).join(" ") + ' <span class="log-undo" data-move-cancel-id="' + escapeHtml(e.id) + '">Cancel</span>';
+        } else {
+          actionsHtml = '<span class="log-undo" data-undo-id="' + escapeHtml(e.id) + '">Undo</span> ' +
+            '<span class="log-undo" data-move-open-id="' + escapeHtml(e.id) + '">Move…</span>';
+        }
+      }
       return '<div class="recent-item' + rowClass + '">' +
         '<span class="dot ' + dotClass + '"></span>' +
         '<span class="rname" style="flex:1;">' + escapeHtml(e.code) + '</span>' +
         '<span class="rmeta" style="flex:2;text-align:right;">' + message + '</span>' +
-        undoHtml +
+        actionsHtml +
         '</div>';
     }).join("");
     var undoEls = els.dispatchLogList.querySelectorAll("[data-undo-id]");
     for (var u = 0; u < undoEls.length; u++) {
       undoEls[u].addEventListener("click", function (e) { dispatchUndo(e.currentTarget.getAttribute("data-undo-id")); });
+    }
+    var moveOpenEls = els.dispatchLogList.querySelectorAll("[data-move-open-id]");
+    for (var mo = 0; mo < moveOpenEls.length; mo++) {
+      moveOpenEls[mo].addEventListener("click", function (e) {
+        dispatchMovingEntryId = e.currentTarget.getAttribute("data-move-open-id");
+        renderDispatchLog();
+      });
+    }
+    var moveCancelEls = els.dispatchLogList.querySelectorAll("[data-move-cancel-id]");
+    for (var mc = 0; mc < moveCancelEls.length; mc++) {
+      moveCancelEls[mc].addEventListener("click", function () {
+        dispatchMovingEntryId = null;
+        renderDispatchLog();
+      });
+    }
+    var moveTargetEls = els.dispatchLogList.querySelectorAll("[data-move-target]");
+    for (var mt = 0; mt < moveTargetEls.length; mt++) {
+      moveTargetEls[mt].addEventListener("click", function (e) {
+        var id = e.currentTarget.getAttribute("data-move-id");
+        var target = e.currentTarget.getAttribute("data-move-target");
+        dispatchMovingEntryId = null;
+        dispatchMoveEntry(id, target);
+      });
     }
   }
 
@@ -2981,6 +3076,36 @@
     });
   }
 
+  // Fixes a scan logged under the wrong courier in place — clears it from the
+  // original column and re-logs it correctly under the target one — instead of
+  // needing to open the sheet on a laptop to move it by hand.
+  function dispatchMoveEntry(entryId, targetKey) {
+    var entry = dispatchLog.filter(function (e) { return e.id === entryId; })[0];
+    if (!entry || !entry.undoPayload) { renderDispatchLog(); return; }
+    var fromCourier = entry.courier;
+    var payload = Object.assign({ op: "dispatchMove", targetCourier: targetKey }, entry.undoPayload);
+    apiPost(payload).then(function (res) {
+      if (res && res.authError) { renderDispatchLog(); return; }
+      if (res && res.ok) {
+        bumpDispatchCount(fromCourier, -1);
+        bumpDispatchCount(targetKey, 1);
+        entry.courier = targetKey;
+        entry.undoPayload = { tab: res.tab, row: res.row, col: res.col, expectedValue: res.formatted };
+        entry.message = "Moved to " + dispatchCourierLabel(targetKey) + ", " + nowTimeLabel_();
+        renderDispatchLog();
+        showDispatchLast(res.formatted, dispatchCourierLabel(targetKey));
+      } else {
+        alert((res && res.error) || "Couldn’t move that — it may have already changed.");
+        renderDispatchLog();
+      }
+    }).catch(function (err) {
+      alert(err && err.isTimeout
+        ? "That took too long to reach the sheet. Nothing changed — try again."
+        : "Couldn’t reach the sheet to move that. Try again once you’re online.");
+      renderDispatchLog();
+    });
+  }
+
   function playLowBeep() {
     if (!scanAudioCtx) return;
     try {
@@ -3007,6 +3132,16 @@
     }
   }
 
+  // A quiet, persistent answer to "did that last one actually make it into the
+  // sheet?" — unlike the flash banner (which fades in ~1.4s), this stays up until
+  // the next successful dispatch replaces it, so it's still there if you glance
+  // back seconds or minutes later, not just in the instant it happened.
+  function showDispatchLast(code, courierLabel) {
+    if (!els.dispatchLast || !els.dispatchLastValue) return;
+    els.dispatchLastValue.textContent = code + " → " + courierLabel + ", " + nowTimeLabel_();
+    els.dispatchLast.hidden = false;
+  }
+
   // Scanning is fully local and instant — no network call per scan — which is what
   // makes back-to-back scanning (tens of orders in a row) actually fast. Nothing is
   // checked against Order Master or the other couriers' tabs until Dispatch is
@@ -3026,7 +3161,10 @@
       els.dispatchPendingList.innerHTML = '<div class="recent-empty">Nothing scanned yet.</div>';
       return;
     }
-    els.dispatchPendingList.innerHTML = list.map(function (e) {
+    // Rendered newest-first (the underlying array itself stays in scan order, since
+    // that's the order they still get written to the sheet) so the scan you just
+    // made is the one sitting at the top, not buried under everything before it.
+    els.dispatchPendingList.innerHTML = list.slice().reverse().map(function (e) {
       return '<div class="recent-item"><span class="rname" style="flex:1;">' + escapeHtml(e.code) + '</span>' +
         '<span class="log-undo" data-remove-id="' + escapeHtml(e.id) + '">Remove</span></div>';
     }).join("");
@@ -3089,6 +3227,13 @@
     var courierAtCommit = dispatchCourier;
     var items = dispatchPending[courierAtCommit] || [];
     if (!items.length || !els.dispatchCommitBtn) return;
+    // Snapshot exactly which pending entries this request is for, by id — nothing
+    // stops you from scanning more into the same courier while this request is still
+    // in flight (that's the whole point of not blocking on network calls), so on
+    // success only THESE ids get cleared, never the whole list. Clearing the whole
+    // array here would silently drop anything scanned during that window.
+    var submittedIds = {};
+    items.forEach(function (e) { submittedIds[e.id] = true; });
     var originalLabel = els.dispatchCommitBtn.textContent;
     els.dispatchCommitBtn.disabled = true;
     els.dispatchCommitBtn.textContent = "Dispatching…";
@@ -3112,6 +3257,7 @@
             canUndo: true, courier: courierAtCommit,
             undoPayload: { tab: r.tab, row: r.row, col: r.col, expectedValue: r.formatted }
           });
+          showDispatchLast(r.code, dispatchCourierLabel(courierAtCommit)); // last one wins as the loop moves on
         } else {
           addDispatchLogEntry({
             id: id,
@@ -3122,15 +3268,16 @@
       });
       dispatchFeedback(okCount > 0);
       if (okCount) bumpDispatchCount(courierAtCommit, okCount);
-      dispatchPending[courierAtCommit] = [];
+      dispatchPending[courierAtCommit] = (dispatchPending[courierAtCommit] || []).filter(function (e) { return !submittedIds[e.id]; });
       saveDispatchPending_();
       renderDispatchPending();
     }).catch(function (err) {
       els.dispatchCommitBtn.disabled = false;
       els.dispatchCommitBtn.textContent = originalLabel;
-      alert(err && err.isOffline
-        ? "Offline — couldn’t reach the sheet. Your scanned list is still saved; try Dispatch again once you’re back online."
-        : "Something went wrong — nothing was lost, try Dispatch again.");
+      var msg = "Something went wrong — nothing was lost, try Dispatch again.";
+      if (err && err.isOffline) msg = "Offline — couldn’t reach the sheet. Your scanned list is still saved; try Dispatch again once you’re back online.";
+      else if (err && err.isTimeout) msg = "That took too long to reach the sheet. Your scanned list is still saved — try Dispatch again.";
+      alert(msg);
     });
   }
 
@@ -3768,7 +3915,29 @@
 
   els.scanBtn.addEventListener("click", function () { unlockScanAudio(); startScan(activeTab === "receiving" ? "receiving" : activeTab === "dispatch" ? "dispatch" : "lookup"); });
   els.stopBtn.addEventListener("click", stopScan);
-  document.addEventListener("visibilitychange", function () { if (document.hidden) stopScan(); });
+
+  // Built for a workflow that bounces constantly between this app and another one —
+  // e.g. photographing an order in WhatsApp, then straight back here to scan it before
+  // packing the next one. Releasing the camera while hidden is still correct (holding
+  // onto it could block WhatsApp's own camera from opening), but making you tap "Start
+  // camera" again on every single round trip would make that bounce painfully slow at
+  // 50+ orders a day. So: remember that a continuous scan (Receiving/Dispatch — not the
+  // one-shot Scan/Check mode, which already stops itself after a single read) was
+  // running right before you left, and restart it the instant you're back, with zero
+  // taps, as long as you're still sitting on that same tab.
+  var resumeScanModeOnVisible = null;
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      resumeScanModeOnVisible = (scanning && (scanMode === "receiving" || scanMode === "dispatch")) ? scanMode : null;
+      stopScan();
+    } else if (resumeScanModeOnVisible) {
+      var modeToResume = resumeScanModeOnVisible;
+      resumeScanModeOnVisible = null;
+      if ((modeToResume === "dispatch" && activeTab === "dispatch") || (modeToResume === "receiving" && activeTab === "receiving")) {
+        startScan(modeToResume);
+      }
+    }
+  });
 
   refreshCatalog();
   renderRecent();
