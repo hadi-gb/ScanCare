@@ -1015,6 +1015,22 @@
   .dispatch-flash.ok { background: var(--ok); }
   .dispatch-flash.bad { background: var(--warn); }
 
+  /* Catchable in peripheral vision, not just when looking straight at the banner —
+     a thick glowing border around the entire screen. This is the fallback of last
+     resort for a phone on silent (no beep, no vibration), so it needs to be genuinely
+     hard to miss even if you're not looking directly at the phone yet. */
+  .dispatch-edge-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    pointer-events: none;
+    opacity: 0;
+    box-shadow: inset 0 0 0 16px var(--ok), inset 0 0 40px 6px var(--ok);
+    transition: opacity 0.12s ease;
+  }
+  .dispatch-edge-flash.show { opacity: 1; }
+  .dispatch-edge-flash.bad { box-shadow: inset 0 0 0 16px var(--warn), inset 0 0 40px 6px var(--warn); }
+
   /* A quieter, persistent companion to the flash above — the flash fades after a
      moment, but the question "what actually made it into the sheet, for real" can
      come up seconds or minutes later (e.g. right after finishing a batch). This
@@ -1181,6 +1197,13 @@
 </style>
 
 <button type="button" id="themeToggleBtn" class="theme-toggle" aria-label="Switch to light mode">🌙</button>
+
+<!-- Full-screen edge flash for Dispatch scans — on iPhone with the mute switch on,
+     there's no vibration (Safari never implemented it) and the beep goes silent too,
+     so this on-screen signal is the ONLY feedback that's guaranteed to work no matter
+     the phone's sound settings. Fixed positioning + a very high z-index means it's
+     visible regardless of scroll position or which section is showing underneath. -->
+<div class="dispatch-edge-flash" id="dispatchEdgeFlash" aria-hidden="true"></div>
 
 <div class="lock-screen" id="lockScreen">
   <div class="lock-card">
@@ -1800,7 +1823,7 @@
    "dispatchCourierPicker","dispatchTallyLabel","dispatchTallySub","dispatchTallyNum",
    "dispatchManualForm","dispatchManualInput","dispatchLogList",
    "dispatchPendingList","dispatchPendingNum","dispatchCommitBtn",
-   "dispatchRefreshBtn","dispatchFlash","dispatchLast","dispatchLastValue",
+   "dispatchRefreshBtn","dispatchFlash","dispatchLast","dispatchLastValue","dispatchEdgeFlash",
    "syncBanner","syncBannerText","syncNowBtn"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
 
@@ -3180,14 +3203,23 @@
   // it's visible no matter where the manual form or scanner slot sits on the page.
   var dispatchFlashTimer = null;
   function showDispatchFlash(text, isGood) {
-    if (!els.dispatchFlash) return;
-    els.dispatchFlash.textContent = text;
-    els.dispatchFlash.classList.remove("ok", "bad");
-    els.dispatchFlash.classList.add(isGood ? "ok" : "bad");
-    els.dispatchFlash.classList.add("show");
+    if (els.dispatchFlash) {
+      els.dispatchFlash.textContent = text;
+      els.dispatchFlash.classList.remove("ok", "bad");
+      els.dispatchFlash.classList.add(isGood ? "ok" : "bad");
+      els.dispatchFlash.classList.add("show");
+    }
+    // Fires together with the banner above — on an iPhone with the mute switch on,
+    // this full-screen edge glow is the only one of the three signals (beep,
+    // vibration, this) that's guaranteed to actually work.
+    if (els.dispatchEdgeFlash) {
+      els.dispatchEdgeFlash.classList.toggle("bad", !isGood);
+      els.dispatchEdgeFlash.classList.add("show");
+    }
     clearTimeout(dispatchFlashTimer);
     dispatchFlashTimer = setTimeout(function () {
-      els.dispatchFlash.classList.remove("show");
+      if (els.dispatchFlash) els.dispatchFlash.classList.remove("show");
+      if (els.dispatchEdgeFlash) els.dispatchEdgeFlash.classList.remove("show");
     }, 1400);
   }
 
