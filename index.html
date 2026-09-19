@@ -360,6 +360,66 @@
   }
   .lookup-row button:hover { border-color: var(--accent); }
 
+  /* Order search */
+  #dispatchSearchResult { margin-top: 10px; }
+  .search-result-found, .search-result-warn {
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+  .search-result-found { background: var(--ok-soft); color: var(--ok); }
+  .search-result-warn { background: var(--warn-soft); color: var(--warn); }
+  .search-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .search-result-tile {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  .search-result-tile .label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  .search-result-tile .value {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .search-multi-flag {
+    font-weight: 700;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .search-multi-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .search-multi-item {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--text);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.82rem;
+  }
+  .search-multi-item .courier { font-weight: 600; }
+
   /* Spreadsheet import */
   .import-box {
     background: var(--surface);
@@ -862,6 +922,16 @@
     flex-direction: column;
     gap: 6px;
   }
+  /* Dispatch's own queue and activity log specifically — not the generic
+     .recent-list used elsewhere — get a scroll cap. A busy day can put 200-500
+     items through either of these, and without this they'd stretch the page to
+     an unusable length instead of the rest of the tab (Scan, manual entry,
+     Dispatch button) staying put where you expect it. */
+  #dispatchPendingList, #dispatchLogList {
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
   .recent-empty {
     font-size: 0.82rem;
     color: var(--text-muted);
@@ -952,6 +1022,46 @@
   }
   .courier-chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
   .courier-chip .n { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 0.7rem; opacity: 0.8; }
+
+  /* Today's order numbers for whichever courier is selected — collapsed by default
+     since a busy day's list can run long, reloads fresh from the sheet every time
+     it's opened, and follows the courier selection (not just the count). */
+  .dispatch-today-orders { margin-top: 8px; }
+  .dispatch-today-toggle {
+    width: 100%;
+    text-align: left;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+  }
+  .dispatch-today-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .dispatch-today-list .order-chip {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    color: var(--text);
+  }
+  .dispatch-today-list .recent-empty { font-size: 0.78rem; color: var(--text-muted); padding: 2px; }
 
   /* Manual page-fit override for the printed manifest — normally hidden, the auto
      column count already aims for one page, this is only for bumping it up if a
@@ -1135,6 +1245,14 @@
       position: relative;
       top: 3px;
     }
+    /* Applied to #manifestOrderList itself on very large batches (see
+       manifestDensityClass) — columns alone can't keep a 300-500 order day on one
+       sheet, so past a threshold the numbers themselves get a notch smaller and
+       tighter too, on top of whatever column count is already in play. */
+    .dispatch-manifest-print ol.manifest-dense li { font-size: 0.78rem; margin-bottom: 2px; }
+    .dispatch-manifest-print ol.manifest-dense { column-gap: 18px; }
+    .dispatch-manifest-print ol.manifest-dense-2 li { font-size: 0.68rem; margin-bottom: 1px; }
+    .dispatch-manifest-print ol.manifest-dense-2 { column-gap: 14px; }
   }
 
   footer {
@@ -1443,6 +1561,17 @@
       <span class="dispatch-last-label">Last dispatched</span>
       <span class="dispatch-last-value" id="dispatchLastValue">&mdash;</span>
     </div>
+    <section aria-labelledby="dispatch-search-h">
+      <h2 id="dispatch-search-h">Find an order</h2>
+      <p class="scan-note">Checks every courier, last 6 months &mdash; not just the one selected below.</p>
+      <form class="lookup-row" id="dispatchSearchForm">
+        <label class="sr-only" for="dispatchSearchInput">Order number</label>
+        <input id="dispatchSearchInput" type="text" inputmode="numeric" placeholder="e.g. 334920 or sohati-334920" autocomplete="off">
+        <button class="btn-ghost" type="submit" id="dispatchSearchBtn">Search</button>
+      </form>
+      <div id="dispatchSearchResult"></div>
+    </section>
+
     <section aria-labelledby="dispatch-courier-h">
       <h2 id="dispatch-courier-h">Courier</h2>
       <div class="courier-picker" id="dispatchCourierPicker">
@@ -1464,6 +1593,10 @@
           <button type="button" class="dispatch-refresh-btn" id="dispatchRefreshBtn" title="Refresh today's count" aria-label="Refresh today's count">&#8635;</button>
         </div>
       </div>
+      <div class="dispatch-today-orders">
+        <button type="button" class="dispatch-today-toggle" id="dispatchTodayToggle">View today&rsquo;s orders &#9660;</button>
+        <div class="dispatch-today-list" id="dispatchTodayList" hidden></div>
+      </div>
       <button type="button" class="btn-ghost btn-small" id="dispatchManifestBtn" style="margin-top:8px;">Print manifest for pickup</button>
       <div class="manifest-cols-row" id="manifestColsRow">
         <span class="manifest-cols-label">Fit to page:</span>
@@ -1472,8 +1605,10 @@
         <button type="button" class="manifest-col-chip" data-cols="2">2 col</button>
         <button type="button" class="manifest-col-chip" data-cols="3">3 col</button>
         <button type="button" class="manifest-col-chip" data-cols="4">4 col</button>
+        <button type="button" class="manifest-col-chip" data-cols="5">5 col</button>
+        <button type="button" class="manifest-col-chip" data-cols="6">6 col</button>
       </div>
-      <p class="cam-note">Auto keeps a long list on one sheet by spreading it into columns. If the print preview still shows 2 pages, bump this up and print again.</p>
+      <p class="cam-note">Auto keeps a long list on one sheet by spreading it into columns (and shrinking the text a bit on a very busy day). If the print preview still shows 2 pages, bump this up and print again.</p>
     </section>
 
     <section aria-labelledby="dispatch-scan-h">
@@ -1925,6 +2060,8 @@
    "receivingTallyNum","receivingResetBtn",
    "dispatchCourierPicker","dispatchTallyLabel","dispatchTallySub","dispatchTallyNum",
    "dispatchManualForm","dispatchManualInput","dispatchLogList",
+   "dispatchTodayToggle","dispatchTodayList",
+   "dispatchSearchForm","dispatchSearchInput","dispatchSearchResult","dispatchSearchBtn",
    "dispatchPendingList","dispatchPendingNum","dispatchCommitBtn",
    "dispatchRefreshBtn","dispatchFlash","dispatchLast","dispatchLastValue","dispatchEdgeFlash",
    "dispatchManifestBtn","dispatchManifestPrint","manifestCourierLabel","manifestDate","manifestPrintedAt","manifestOrderList","manifestTotal","manifestColsRow",
@@ -3078,6 +3215,7 @@
         renderDispatchCourierPicker();
         renderDispatchTally();
         renderDispatchPending();
+        if (dispatchTodayOpen) loadDispatchTodayOrders(); // switching courier while the list is open follows the new one
       });
     }
   }
@@ -3088,6 +3226,48 @@
     var span = document.getElementById("dispatchCount" + courierKey);
     if (span) span.textContent = dispatchCounts[courierKey].count;
     if (courierKey === dispatchCourier) renderDispatchTally();
+  }
+
+  // Whether the "today's orders" list under the tally bar is expanded — starts
+  // closed since a busy day's list can run long, and follows whichever courier
+  // is currently selected once opened.
+  var dispatchTodayOpen = false;
+  function setDispatchTodayToggleLabel_() {
+    if (!els.dispatchTodayToggle) return;
+    els.dispatchTodayToggle.innerHTML = dispatchTodayOpen ? "Hide today&rsquo;s orders &#9650;" : "View today&rsquo;s orders &#9660;";
+  }
+  function renderDispatchTodayList_(orders) {
+    if (!els.dispatchTodayList) return;
+    if (!orders || !orders.length) {
+      els.dispatchTodayList.innerHTML = '<div class="recent-empty">Nothing logged for ' + escapeHtml(dispatchCourierLabel(dispatchCourier)) + ' today yet.</div>';
+      return;
+    }
+    els.dispatchTodayList.innerHTML = orders.map(function (o) { return '<span class="order-chip">' + escapeHtml(o) + '</span>'; }).join("");
+  }
+  function loadDispatchTodayOrders() {
+    if (!els.dispatchTodayList) return;
+    var courierAtLoad = dispatchCourier;
+    els.dispatchTodayList.innerHTML = '<div class="recent-empty">Loading&hellip;</div>';
+    apiPost({ op: "dispatchManifest", courier: courierAtLoad }).then(function (res) {
+      if (courierAtLoad !== dispatchCourier) return; // courier switched again before this came back — drop the stale result
+      if (res && res.authError) return;
+      if (!res || !res.ok) {
+        els.dispatchTodayList.innerHTML = '<div class="recent-empty">' + escapeHtml((res && res.error) || "Couldn’t load today’s orders.") + '</div>';
+        return;
+      }
+      renderDispatchTodayList_(res.orders);
+    }).catch(function () {
+      if (courierAtLoad !== dispatchCourier) return;
+      els.dispatchTodayList.innerHTML = '<div class="recent-empty">Couldn’t reach the sheet — try again once you’re online.</div>';
+    });
+  }
+  if (els.dispatchTodayToggle) {
+    els.dispatchTodayToggle.addEventListener("click", function () {
+      dispatchTodayOpen = !dispatchTodayOpen;
+      els.dispatchTodayList.hidden = !dispatchTodayOpen;
+      setDispatchTodayToggleLabel_();
+      if (dispatchTodayOpen) loadDispatchTodayOrders();
+    });
   }
 
   function refreshDispatchStatus() {
@@ -3102,6 +3282,7 @@
         if (span) span.textContent = (dispatchCounts[c.key] && dispatchCounts[c.key].count) || 0;
       });
       renderDispatchTally();
+      if (dispatchTodayOpen) loadDispatchTodayOrders(); // the one refresh button covers this list too, not just counts
     }).catch(function () {
       if (els.dispatchRefreshBtn) els.dispatchRefreshBtn.classList.remove("spinning");
       /* status refresh is best-effort — never blocks scanning */
@@ -3129,7 +3310,19 @@
     if (n <= 32) return 1;
     if (n <= 64) return 2;
     if (n <= 96) return 3;
-    return 4;
+    if (n <= 140) return 4;
+    if (n <= 200) return 5;
+    return 6; // 500+ still lands here — see the density font-size step below
+  }
+  // Columns alone stop being enough once a batch gets into the hundreds — six
+  // columns of full-size text would run off the page width before it ever helps.
+  // So past a certain size the text itself shrinks a step (still six columns,
+  // just narrower per column), which is what actually keeps a 300-500 order day
+  // fitting on one sheet instead of just adding columns forever.
+  function manifestDensityClass(n) {
+    if (n <= 200) return "";
+    if (n <= 350) return "manifest-dense";
+    return "manifest-dense-2";
   }
   function dispatchFormatPrintedTime_(d) {
     try {
@@ -3176,6 +3369,7 @@
       var cols = dispatchManifestColsOverride || autoManifestColumns(res.orders.length);
       els.manifestOrderList.style.columnCount = cols;
       els.manifestOrderList.style.webkitColumnCount = cols;
+      els.manifestOrderList.className = manifestDensityClass(res.orders.length);
       window.print();
     }).catch(function (err) {
       els.dispatchManifestBtn.disabled = false;
@@ -3187,6 +3381,69 @@
   }
   if (els.dispatchManifestBtn) {
     els.dispatchManifestBtn.addEventListener("click", printDispatchManifest);
+  }
+
+  function renderDispatchSearchResult_(res, queryDigits) {
+    if (!els.dispatchSearchResult) return;
+    if (!res || !res.ok) {
+      els.dispatchSearchResult.innerHTML = "<div class=\"search-result-warn\">" +
+        escapeHtml((res && res.error) || "Couldn’t search right now.") + "</div>";
+      return;
+    }
+    var matches = res.matches || [];
+    if (!matches.length) {
+      els.dispatchSearchResult.innerHTML = "<div class=\"search-result-warn\">No dispatch found for <strong>" +
+        escapeHtml(queryDigits) + "</strong> in the last 6 months.</div>";
+      return;
+    }
+    if (matches.length === 1) {
+      var m = matches[0];
+      els.dispatchSearchResult.innerHTML = "<div class=\"search-result-found\">Found order <strong>" +
+        escapeHtml(queryDigits) + "</strong>." +
+        "<div class=\"search-result-grid\">" +
+        "<div class=\"search-result-tile\"><span class=\"label\">Courier</span><span class=\"value\">" + escapeHtml(m.courierLabel) + "</span></div>" +
+        "<div class=\"search-result-tile\"><span class=\"label\">Date</span><span class=\"value\">" + escapeHtml(m.date) + "</span></div>" +
+        "</div></div>";
+      return;
+    }
+    var items = matches.map(function (mm) {
+      return "<li class=\"search-multi-item\"><span class=\"courier\">" + escapeHtml(mm.courierLabel) + "</span><span>" + escapeHtml(mm.date) + "</span></li>";
+    }).join("");
+    els.dispatchSearchResult.innerHTML = "<div class=\"search-result-warn\">" +
+      "<span class=\"search-multi-flag\">Dispatched " + matches.length + " times &mdash; found under more than one entry:</span>" +
+      "<ul class=\"search-multi-list\">" + items + "</ul></div>";
+  }
+
+  function searchDispatchOrder() {
+    if (!els.dispatchSearchInput) return;
+    var raw = els.dispatchSearchInput.value;
+    var digits = extractOrderDigits_(raw);
+    if (!digits) {
+      if (els.dispatchSearchResult) els.dispatchSearchResult.innerHTML = "<div class=\"search-result-warn\">Enter a valid order number.</div>";
+      return;
+    }
+    var btn = els.dispatchSearchBtn;
+    var originalLabel = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Searching…"; }
+    if (els.dispatchSearchResult) els.dispatchSearchResult.innerHTML = "<div class=\"search-result-warn\">Searching the last 6 months across every courier…</div>";
+    apiPost({ op: "dispatchSearchOrder", code: raw }).then(function (res) {
+      if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+      if (res && res.authError) return;
+      renderDispatchSearchResult_(res, digits);
+    }).catch(function (err) {
+      if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+      if (els.dispatchSearchResult) {
+        els.dispatchSearchResult.innerHTML = "<div class=\"search-result-warn\">" +
+          (err && err.isTimeout ? "That took too long to reach the sheet — try again." : "Couldn’t reach the sheet to search. Try again once you’re online.") +
+          "</div>";
+      }
+    });
+  }
+  if (els.dispatchSearchForm) {
+    els.dispatchSearchForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      searchDispatchOrder();
+    });
   }
 
   // Which log entry (if any) currently has its "move to another courier" picker
@@ -3483,6 +3740,7 @@
       });
       dispatchFeedback(okCount > 0);
       if (okCount) bumpDispatchCount(courierAtCommit, okCount);
+      if (okCount && dispatchTodayOpen && courierAtCommit === dispatchCourier) loadDispatchTodayOrders();
       dispatchPending[courierAtCommit] = (dispatchPending[courierAtCommit] || []).filter(function (e) { return !submittedIds[e.id]; });
       saveDispatchPending_();
       renderDispatchPending();
