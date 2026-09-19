@@ -478,6 +478,21 @@
   }
   .tab-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 
+  /* Desktop mode (toggled on <body> by applyDesktopMode() in the script, based on
+     window width) — no reason to show a camera UI at a desk, and no reason to stay
+     squeezed into a phone-card width once there's real screen to use. */
+  body.desktop-mode .app { max-width: 780px; }
+  body.desktop-mode main { padding: 4px 30px 32px; }
+  body.desktop-mode #scannerBlock { display: none !important; }
+  body.desktop-mode section[aria-labelledby="scan-h"],
+  body.desktop-mode section[aria-labelledby="rcv-scan-h"],
+  body.desktop-mode section[aria-labelledby="dispatch-scan-h"] { display: none; }
+  body.desktop-mode .inv-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
   /* Catalog / Inventory */
   .catalog-search {
     width: 100%;
@@ -2068,6 +2083,39 @@
    "syncBanner","syncBannerText","syncNowBtn"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
 
+  // Desktop mode: once the window is wide enough that reaching for a phone
+  // camera isn't realistic anyway (this is a desk, not the warehouse aisle),
+  // hide the camera-scanning sections across Scan / Receiving / Dispatch and
+  // leave typing (by hand, or via a corded/wireless barcode gun typing into
+  // the focused field) as the one path in, while giving the app a wider,
+  // less phone-shaped layout. Driven by matchMedia so resizing the window
+  // toggles it live.
+  var desktopModeQuery = window.matchMedia("(min-width: 860px)");
+  function applyDesktopMode() {
+    var isDesktop = desktopModeQuery.matches;
+    document.body.classList.toggle("desktop-mode", isDesktop);
+    var manualH = document.getElementById("manual-h");
+    var rcvManualH = document.getElementById("rcv-manual-h");
+    var dispatchManualH = document.getElementById("dispatch-manual-h");
+    if (manualH) manualH.textContent = isDesktop ? "Enter a code" : "Or enter a code";
+    if (rcvManualH) rcvManualH.textContent = isDesktop ? "Enter a code" : "Or enter a code";
+    if (dispatchManualH) dispatchManualH.textContent = isDesktop ? "Enter a number" : "Or enter a number";
+    // If Receiving is the visible tab and idle (no item pulled up) when the window
+    // crosses the breakpoint, refresh its placeholder so it doesn't keep telling
+    // you to scan a camera section that just appeared or disappeared.
+    if (activeTab === "receiving" && !receivingCurrent && els.receivingCardBody) {
+      els.receivingCardBody.innerHTML = isDesktop
+        ? '<p class="scan-note">Enter a barcode below to get started.</p>'
+        : '<p class="scan-note">Scan a barcode above, or enter one below, to get started.</p>';
+    }
+  }
+  applyDesktopMode();
+  if (desktopModeQuery.addEventListener) {
+    desktopModeQuery.addEventListener("change", applyDesktopMode);
+  } else if (desktopModeQuery.addListener) {
+    desktopModeQuery.addListener(applyDesktopMode); // older Safari
+  }
+
   window.addEventListener("online", flushWriteQueue);
   window.addEventListener("offline", renderSyncBanner);
   setInterval(flushWriteQueue, 20000); // safety net — the "online" event doesn't always fire reliably on mobile
@@ -2106,6 +2154,11 @@
     if (activeTab === "receiving") {
       moveScannerBlock(els.receivingScannerSlot);
       els.camNote.textContent = "Camera stays on between scans — point it at the next box whenever you're ready. Tap the preview if it looks out of focus.";
+      if (!receivingCurrent && els.receivingCardBody) {
+        els.receivingCardBody.innerHTML = document.body.classList.contains("desktop-mode")
+          ? '<p class="scan-note">Enter a barcode below to get started.</p>'
+          : '<p class="scan-note">Scan a barcode above, or enter one below, to get started.</p>';
+      }
     }
     if (activeTab === "dispatch") {
       moveScannerBlock(els.dispatchScannerSlot);
@@ -2959,7 +3012,9 @@
     if (skipBtn) {
       skipBtn.addEventListener("click", function () {
         receivingCurrent = null;
-        els.receivingCardBody.innerHTML = '<p class="scan-note">Scan a barcode above, or enter one below, to get started.</p>';
+        els.receivingCardBody.innerHTML = document.body.classList.contains("desktop-mode")
+          ? '<p class="scan-note">Enter a barcode below to get started.</p>'
+          : '<p class="scan-note">Scan a barcode above, or enter one below, to get started.</p>';
         refocusReceivingInput();
       });
     }
@@ -3061,7 +3116,9 @@
       renderReceivingLog();
       pushRecent({ barcode: cur.barcode, name: name, tone: "ok", ts: 0 });
       receivingCurrent = null;
-      els.receivingCardBody.innerHTML = '<p class="scan-note">Logged. Scan the next barcode, or type one below.</p>';
+      els.receivingCardBody.innerHTML = document.body.classList.contains("desktop-mode")
+        ? '<p class="scan-note">Logged. Type the next barcode below.</p>'
+        : '<p class="scan-note">Logged. Scan the next barcode, or type one below.</p>';
       refocusReceivingInput();
     }
 
