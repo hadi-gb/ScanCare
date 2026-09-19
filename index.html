@@ -1975,6 +1975,11 @@
       els.camNote.textContent = "Scans continuously, like Receiving mode — point it at the next order whenever you're ready. Tap the preview if it looks out of focus.";
       refreshDispatchStatus();
       renderDispatchPending();
+      // Auto-focus the manual entry field so a wireless (Bluetooth "HID keyboard mode")
+      // barcode gun can type straight into it — pull the trigger, it types the digits
+      // and an Enter keystroke, the form below submits itself. No cord, no camera,
+      // no tapping the screen between scans.
+      if (els.dispatchManualInput) els.dispatchManualInput.focus();
     }
   }
   els.tabScanBtn.addEventListener("click", function () { setTab("scan"); });
@@ -3501,6 +3506,10 @@
       var val = els.dispatchManualInput.value;
       els.dispatchManualInput.value = "";
       handleDispatchCode(val);
+      // Keep focus in the field after every scan — a wireless barcode gun (or fast
+      // manual typing) can keep firing one after another without the screen ever
+      // needing to be touched between them.
+      els.dispatchManualInput.focus();
     });
   }
 
