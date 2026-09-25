@@ -549,6 +549,28 @@
     gap: 10px;
   }
   .inv-card.clickable { cursor: pointer; }
+  /* iPhone Safari zooms the whole page into any text field under 16px — keep them at 16px on touch devices. */
+  @supports (-webkit-touch-callout: none) {
+    input[type="text"], input[type="number"], input[type="password"], input[type="search"], select, textarea { font-size: 16px !important; }
+  }
+  /* Website stock line under each Inventory card (from the Website Stock snapshot). */
+  .inv-card { flex-wrap: wrap; }
+  .web-row { flex-basis: 100%; display: flex; align-items: baseline; gap: 8px; margin-top: 2px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 0.78rem; color: var(--text-muted); min-width: 0; }
+  .web-row .wlabel { font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.64rem; flex-shrink: 0; }
+  .web-row .wval { font-family: "IBM Plex Mono", monospace; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .web-row .wval.crit { color: var(--critical); }
+  .web-row s { opacity: 0.7; font-family: "IBM Plex Mono", monospace; white-space: nowrap; }
+  .web-bar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .flag-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 4px; }
+  .flag-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; min-height: 34px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font: inherit; font-size: 0.72rem; font-weight: 600; color: var(--text); white-space: nowrap; cursor: pointer; }
+  .flag-chip .n { font-family: "IBM Plex Mono", monospace; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); }
+  .flag-chip.on { border-color: var(--accent); background: var(--accent-soft); }
+  .flag-chip.crit .n { background: var(--critical-soft); color: var(--critical); }
+  .flag-chip.warn .n { background: var(--warn-soft); color: var(--warn); }
+  .flag-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .web-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.74rem; color: var(--text-muted); }
+  .web-status button { background: none; border: 0; padding: 8px 0 8px 12px; font: inherit; font-weight: 600; color: var(--accent); cursor: pointer; }
+  .web-status button[disabled] { color: var(--text-muted); cursor: default; }
   .inv-card.clickable:hover { border-color: var(--accent); }
   .inv-main { flex: 1; min-width: 0; }
   .inv-name {
@@ -1138,6 +1160,61 @@
   .dispatch-refresh-btn.spinning { animation: dispatch-spin 0.6s linear; }
   @keyframes dispatch-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+  /* Daily report (read from the DAILY REPORT tab in DAILY OUTPUT) */
+  .report-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .report-head h2 { margin: 0; }
+  .report-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .report-range label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .report-range label span { font-family: "Manrope", sans-serif; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  .report-quick { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px; }
+  .report-range input[type="date"] {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.8rem;
+    padding: 7px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    min-height: 34px;
+  }
+  .report-beirut {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: var(--warn-soft);
+    color: var(--warn);
+    font-family: "Manrope", sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+  }
+  .report-beirut small { font-weight: 600; opacity: 0.8; }
+  .report-beirut .n { font-size: 1.3rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .report-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .report-table-wrap .recent-empty { padding: 12px 14px; font-size: 0.8rem; color: var(--text-muted); }
+  .report-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+  .report-table th, .report-table td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  .report-table th:first-child, .report-table td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+  .report-table thead th {
+    font-family: "Manrope", sans-serif;
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    background: var(--surface-2);
+  }
+  .report-table thead th:first-child { background: var(--surface-2); }
+  .report-table td:first-child { font-family: "Manrope", sans-serif; font-weight: 700; color: var(--text); }
+  .report-table tbody tr:last-child td { border-bottom: none; }
+  .report-table tr.total td { font-weight: 800; background: var(--accent-soft); color: var(--accent-strong); border-bottom: none; }
+  .report-table tr.total td:first-child { background: var(--accent-soft); color: var(--accent-strong); }
+
   /* A hard-to-miss confirmation every time a scan is actually accepted (or rejected
      as a same-batch duplicate) — sits pinned to the top of Dispatch mode so it's
      visible whether you're looking at the camera preview or the manual-entry field,
@@ -1479,7 +1556,7 @@
     <button class="tab-btn active" id="tabScanBtn" type="button" data-tab="scan">Scan</button>
     <button class="tab-btn" id="tabInventoryBtn" type="button" data-tab="inventory">Inventory</button>
     <button class="tab-btn" id="tabReceivingBtn" type="button" data-tab="receiving" hidden>Receiving</button>
-    <button class="tab-btn" id="tabDispatchBtn" type="button" data-tab="dispatch" hidden>Dispatch</button>
+    <button class="tab-btn" id="tabDispatchBtn" type="button" data-tab="dispatch" hidden>Orders</button>
   </div>
 
   <main>
@@ -1533,7 +1610,7 @@
           <input class="sr-only" id="csvInput" type="file" accept=".csv,text/csv">
           <button class="btn-ghost btn-small" id="resetBtn" type="button">Refresh live data</button>
         </div>
-        <p class="import-help">The app already reads your MASTER INVENTORY sheet live. Only use this if you want to test against a different, offline CSV instead &mdash; it's read in your browser only, nothing is uploaded, and Scan to Add won't write to your real sheet while a test file is loaded.</p>
+        <p class="import-help">The app already reads your MASTER INVENTORY sheet live. Only use this if you want to test against a different, offline CSV instead &mdash; it's read in your browser only, nothing is uploaded, and nothing you add or change is written to your real sheet while a test file is loaded.</p>
         <p class="import-status" id="importStatus"></p>
       </div>
     </section>
@@ -1555,6 +1632,10 @@
           <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
           <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
         </select>
+      </div>
+      <div class="web-bar">
+        <div class="flag-row" id="webChips" role="group" aria-label="Filter by website stock"></div>
+        <div class="web-status" id="webStatus"></div>
       </div>
       <div class="inv-list" id="catalog"></div>
       <button type="button" class="btn-ghost btn-small catalog-showmore" id="catalogShowMore" hidden>Show more</button>
@@ -1611,7 +1692,7 @@
     </div>
     <section aria-labelledby="dispatch-search-h">
       <h2 id="dispatch-search-h">Find an order</h2>
-      <p class="scan-note">Checks every courier, last 6 months &mdash; not just the one selected below.</p>
+      <p class="scan-note">Checks every courier in DAILY OUTPUT, last 6 months.</p>
       <form class="lookup-row" id="dispatchSearchForm">
         <label class="sr-only" for="dispatchSearchInput">Order number</label>
         <input id="dispatchSearchInput" type="text" inputmode="numeric" placeholder="e.g. 334920 or sohati-334920" autocomplete="off">
@@ -1637,7 +1718,7 @@
           <div class="tally-sub" id="dispatchTallySub"></div>
         </div>
         <div class="tally-side">
-          <div class="tally-count"><span id="dispatchTallyNum">0</span></div>
+          <div class="tally-count"><span id="dispatchTallyNum">0</span><small>orders</small></div>
           <button type="button" class="dispatch-refresh-btn" id="dispatchRefreshBtn" title="Refresh today's count" aria-label="Refresh today's count">&#8635;</button>
         </div>
       </div>
@@ -1658,6 +1739,29 @@
       </div>
       <p class="cam-note">Auto keeps a long list on one sheet by spreading it into columns (and shrinking the text a bit on a very busy day). If the print preview still shows 2 pages, bump this up and print again.</p>
     </section>
+
+    <section aria-labelledby="dispatch-report-h">
+      <div class="report-head">
+        <h2 id="dispatch-report-h">Daily report</h2>
+        <button type="button" class="dispatch-refresh-btn" id="dailyReportRefreshBtn" title="Reload the report" aria-label="Reload the report">&#8635;</button>
+      </div>
+      <div class="report-range">
+        <label for="dailyReportFrom"><span>From</span><input type="date" id="dailyReportFrom"></label>
+        <label for="dailyReportTo"><span>To</span><input type="date" id="dailyReportTo"></label>
+      </div>
+      <div class="report-quick" id="dailyReportQuick">
+        <button type="button" class="manifest-col-chip active" data-range="today">Today</button>
+        <button type="button" class="manifest-col-chip" data-range="yesterday">Yesterday</button>
+        <button type="button" class="manifest-col-chip" data-range="month">This month</button>
+      </div>
+      <div class="report-beirut" id="dailyReportBeirut" hidden></div>
+      <div class="report-table-wrap" id="dailyReportBody"><div class="recent-empty">Loading&hellip;</div></div>
+      <p class="cam-note" id="dailyReportNote">From the DAILY REPORT tab in DAILY OUTPUT.</p>
+    </section>
+
+    <!-- Scanning orders in, typing them in and the Dispatch list are switched off for now
+         (DISPATCH_TOOLS_ENABLED below). Everything is kept intact so it can come back. -->
+    <div id="dispatchTools" hidden>
 
     <section aria-labelledby="dispatch-scan-h">
       <h2 id="dispatch-scan-h">Scan a packed order</h2>
@@ -1689,11 +1793,12 @@
         <div class="recent-empty">Nothing dispatched yet this session.</div>
       </div>
     </section>
+    </div>
    </div>
   </main>
 
   <footer>
-    <strong>Connected live to your MASTER INVENTORY sheet.</strong> Check and Scan to Add both read the sheet in real time, so edits made directly on the sheet show up here right away. Adding a product, a new expiry lot, or adjusting a quantity writes straight back into the sheet for the team to see. Price and live Shopify stock aren't connected yet &mdash; those fields show as placeholders until Shopify is wired up.
+    <strong>Connected live to your MASTER INVENTORY sheet.</strong> Every scan reads the sheet in real time, so edits made directly on the sheet show up here right away. Adding a product, a new expiry lot, or adjusting a quantity writes straight back into the sheet for the team to see. Website stock and price come from sohaticare.com: live when you scan a product, and refreshed a few times a day in the Inventory tab (or tap Refresh). Nothing is ever written to Shopify.
   </footer>
 </div>
 
@@ -1911,9 +2016,20 @@
     el.addEventListener("keydown", function (e) { if (e.key === "Enter") attemptLogin(); });
   });
 
+  // Everything tied to the person who was using the app: camera, timers, open screens.
+  function resetAppState() {
+    try { if (typeof stopScan === "function") stopScan(); } catch (e) {}
+    if (typeof webPollTimer !== "undefined" && webPollTimer) { clearTimeout(webPollTimer); webPollTimer = null; }
+    viewState = null;
+    if (els && els.resultBody) els.resultBody.innerHTML = "";
+    if (typeof receivingCurrent !== "undefined") receivingCurrent = null;
+    if (typeof dispatchLog !== "undefined") dispatchLog = [];
+  }
+
   logoutBtn.addEventListener("click", function () {
     var tokenAtLogout = getSessionToken();
     clearSession();
+    resetAppState();
     showLoginScreen("Logged out.");
     if (tokenAtLogout) {
       // Best-effort — tell the backend to invalidate this token server-side too, so it's
@@ -1940,8 +2056,10 @@
         }
       })
       .catch(function () {
-        clearSession();
-        showLoginScreen("Couldn’t reach the server — please log in again.");
+        // No signal isn't a logout: keep the session and open the app (anything saved
+        // offline stays queued). If the session really expired, the next call says so.
+        showApp();
+        renderSyncBanner();
       });
   })();
 
@@ -1961,6 +2079,11 @@
   var API_TIMEOUT_MS = 45000;
 
   function apiPost(body) {
+    if (!getSessionToken()) {
+      var noLogin = new Error("Not logged in.");
+      noLogin.isAuth = true;
+      return Promise.reject(noLogin);
+    }
     var payload = Object.assign({}, body, { token: getSessionToken() });
     var controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
     var timeoutId = controller ? setTimeout(function () { controller.abort(); }, API_TIMEOUT_MS) : null;
@@ -1992,7 +2115,9 @@
         // screen again; nothing here just assumes the user is still authenticated.
         if (data && data.authError) {
           clearSession();
-          showLoginScreen(data.error || "Your session expired — please log in again.");
+          // Only switch to the login screen once — never wipe what someone's typing there.
+          if (lockScreen.hidden) showLoginScreen(data.error || "Your session expired — please log in again.");
+          resetAppState();
         }
         return data;
       })
@@ -2021,6 +2146,22 @@
   function saveWriteQueue_(q) {
     try { localStorage.setItem(WRITE_QUEUE_KEY, JSON.stringify(q)); } catch (e) { /* storage unavailable — queue just won't survive a reload */ }
   }
+  // Adds units to a still-queued "add" (a lot created offline). Returns false if there's
+  // no such queued add (e.g. it already synced and the catalog just hasn't refreshed yet).
+  function addToQueuedAppend_(barcode, expiryRaw, delta) {
+    var q = loadWriteQueue_();
+    for (var i = q.length - 1; i >= 0; i--) {
+      var pl = q[i].payload;
+      if (pl && pl.op === "append" && String(pl.barcode) === String(barcode) && pl.expiryRaw === expiryRaw) {
+        pl.qty = Math.max(0, (Number(pl.qty) || 0) + delta);
+        saveWriteQueue_(q);
+        renderSyncBanner();
+        return true;
+      }
+    }
+    return false;
+  }
+
   function queueWrite_(payload, label) {
     var q = loadWriteQueue_();
     q.push({ id: "q" + Date.now() + "_" + Math.random().toString(36).slice(2), payload: payload, label: label, queuedAt: Date.now() });
@@ -2042,10 +2183,17 @@
     if (writeQueueFlushing) return;
     var q = loadWriteQueue_();
     if (!q.length) { renderSyncBanner(); return; }
+    if (!getSessionToken()) { renderSyncBanner(); return; } // wait until someone's logged in
     writeQueueFlushing = true;
     var job = q[0];
     apiPost(job.payload).then(function (res) {
       writeQueueFlushing = false;
+      if (res && res.authError) {
+        // Not the change's fault — the login expired. Keep the whole queue; it's sent
+        // again right after the next login (showApp flushes it).
+        renderSyncBanner();
+        return;
+      }
       var remaining = loadWriteQueue_();
       remaining.shift();
       saveWriteQueue_(remaining);
@@ -2138,7 +2286,7 @@
   ["video","viewfinder","vfStatus","scanBtn","stopBtn","camNote","manualForm","manualInput",
    "catalog","resultBody","recentList",
    "csvInput","resetBtn","importStatus","catalogSearch","catalogNote",
-   "catalogYear","catalogMonth","catalogShowMore",
+   "catalogYear","catalogMonth","catalogShowMore","webChips","webStatus",
    "tabScanBtn","tabInventoryBtn","tabReceivingBtn","tabDispatchBtn",
    "scanView","inventoryView","receivingView","dispatchView",
    "scannerBlock","scanScannerSlot","receivingScannerSlot","dispatchScannerSlot",
@@ -2151,6 +2299,7 @@
    "dispatchPendingList","dispatchPendingNum","dispatchCommitBtn",
    "dispatchRefreshBtn","dispatchFlash","dispatchLast","dispatchLastValue","dispatchEdgeFlash",
    "dispatchManifestBtn","dispatchManifestPrint","manifestCourierLabel","manifestRunCourier","manifestDate","manifestPrintedAt","manifestOrderList","manifestTotal","manifestColsRow",
+   "dailyReportFrom","dailyReportTo","dailyReportQuick","dailyReportRefreshBtn","dailyReportBeirut","dailyReportBody","dailyReportNote",
    "syncBanner","syncBannerText","syncNowBtn"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
 
@@ -2202,10 +2351,15 @@
     if (els.scannerBlock.parentNode !== targetSlot) targetSlot.appendChild(els.scannerBlock);
   }
 
-  var activeTab = "scan"; // "scan" | "inventory" | "receiving" | "dispatch"
+  var activeTab = "scan"; // "scan" | "inventory" | "receiving" | "dispatch" (shown as "Orders")
+  // Scanning / typing orders in and the Dispatch list are hidden for now — the Orders tab
+  // searches orders, shows today's count per courier, prints the pickup manifest and the
+  // daily report. Set to true to bring the scanning tools back.
+  var DISPATCH_TOOLS_ENABLED = false;
+  if (DISPATCH_TOOLS_ENABLED) { var dt = document.getElementById("dispatchTools"); if (dt) dt.hidden = false; }
   function setTab(next) {
     if ((next === "receiving" || next === "dispatch") && !canWrite()) next = "scan"; // read-only accounts never see these
-    var CAMERA_TABS = { scan: true, receiving: true, dispatch: true };
+    var CAMERA_TABS = { scan: true, receiving: true, dispatch: DISPATCH_TOOLS_ENABLED };
     var leavingCameraTab = CAMERA_TABS[activeTab] && activeTab !== next;
     if (leavingCameraTab && scanning) stopScan();
     activeTab = next;
@@ -2217,7 +2371,7 @@
     els.inventoryView.hidden = activeTab !== "inventory";
     els.receivingView.hidden = activeTab !== "receiving";
     els.dispatchView.hidden = activeTab !== "dispatch";
-    if (activeTab === "inventory") renderCatalog();
+    if (activeTab === "inventory") { renderCatalog(); loadWebSnapshot(false); }
     if (activeTab === "scan") {
       moveScannerBlock(els.scanScannerSlot);
       els.camNote.textContent = "Decodes barcodes right in your browser — works on iPhone and Android. Tap the preview if it looks out of focus.";
@@ -2231,10 +2385,17 @@
           : '<p class="scan-note">Scan a barcode above, or enter one below, to get started.</p>';
       }
     }
-    if (activeTab === "dispatch") {
+    if (activeTab === "dispatch" && !DISPATCH_TOOLS_ENABLED) {
+      // Orders tab = search, courier counts + manifest, daily report. No camera here.
+      refreshDispatchStatus();
+      loadDailyReport(false);
+      var searchInput = document.getElementById("dispatchSearchInput");
+      if (searchInput && document.body.classList.contains("desktop-mode")) searchInput.focus();
+    } else if (activeTab === "dispatch") {
       moveScannerBlock(els.dispatchScannerSlot);
       els.camNote.textContent = "Scans continuously, like Receiving mode — point it at the next order whenever you're ready. Tap the preview if it looks out of focus.";
       refreshDispatchStatus();
+      loadDailyReport(false);
       renderDispatchPending();
       // Auto-focus the manual entry field so a wireless (Bluetooth "HID keyboard mode")
       // barcode gun can type straight into it — pull the trigger, it types the digits
@@ -2294,7 +2455,7 @@
     }
     var q = Number(batch.qty);
     var tone = q <= 0 ? "critical" : (q <= LOW_STOCK_THRESHOLD ? "warn" : "ok");
-    return { value: String(q) + " units", sub: "counted on sheet", tone: tone, verified: true, qty: q };
+    return { value: String(q) + (q === 1 ? " unit" : " units"), sub: "counted on sheet", tone: tone, verified: true, qty: q };
   }
 
   function worstTone(a, b) {
@@ -2460,11 +2621,24 @@
     loadShopifyStock(code);
     apiLookup(code).then(function (matches) {
       if (!viewState || viewState.barcode !== code) return; // superseded by a newer scan
-      viewState.existing = sortBatches(matches);
-      viewState.loading = false;
-      viewState.syncing = false;
-      viewState.staleWarning = false;
+      var s = viewState;
+      s.existing = sortBatches(matches);
+      s.loading = false;
+      s.syncing = false;
+      s.staleWarning = false;
       logRecentIfFound();
+      if (s.editBatch) {
+        // Point the open edit at the fresh copy of the same batch, so the change is
+        // worked out from the sheet's real quantity, not the cached one.
+        s.editBatch = s.existing.find(function (b) { return String(b.id) === String(s.editBatch.id); }) || null;
+      }
+      if (s.editBatch || s.actionOpen || s.editingName) {
+        // A form is open — don't redraw it (that would wipe what's being typed); just
+        // drop the "Syncing…" note.
+        var note = els.resultBody.querySelector(".sync-note-row");
+        if (note) note.remove();
+        return;
+      }
       renderResult();
     }).catch(function (err) {
       if (!viewState || viewState.barcode !== code) return;
@@ -2547,7 +2721,7 @@
       var qtyText = q < 0 ? q + " (oversold)" : q + " in stock";
       var priceText = shop.price != null ? " &middot; " + formatUsd(shop.price) : "";
       var wasText = (shop.compareAt != null && shop.price != null && shop.compareAt > shop.price) ? "<s>" + formatUsd(shop.compareAt) + "</s>" : "";
-      var link = shop.url ? '<a class="shop-link" href="' + escapeHtml(shop.url) + '" target="_blank" rel="noopener">View</a>' : "";
+      var link = (shop.url && /^https?:\/\//.test(shop.url)) ? '<a class="shop-link" href="' + escapeHtml(shop.url) + '" target="_blank" rel="noopener">View</a>' : "";
       value = '<span class="pvalue' + (q <= 0 ? " tone-critical" : "") + '">' + escapeHtml(qtyText) + priceText + wasText + link + '</span>';
     } else if (shop.status === "not_listed") {
       value = '<span class="pvalue muted">Not on the website' + refreshBtn + '</span>';
@@ -2847,10 +3021,9 @@
     apiPost(appendPayload).then(function (res) {
       if (!res.ok) throw new Error(res.error || "Could not save.");
       var label = isNewProduct ? "New product added" : "New batch (lot) added";
-      els.resultBody.innerHTML = '<div class="add-card"><h4>' + escapeHtml(label) + '</h4><p class="add-sub">' + escapeHtml(name) + ' &middot; expiry ' + escapeHtml(parsed.raw) + ' &middot; qty ' + (qtyNum === null ? "N/A" : qtyNum) + '</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
+      if (viewState === s) els.resultBody.innerHTML = '<div class="add-card"><h4>' + escapeHtml(label) + '</h4><p class="add-sub">' + escapeHtml(name) + ' &middot; expiry ' + escapeHtml(parsed.raw) + ' &middot; qty ' + (qtyNum === null ? "N/A" : qtyNum) + '</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
       pushRecent({ barcode: s.barcode, name: name, tone: "ok", ts: 0 });
-      viewState = null;
-      refocusManualInput();
+      if (viewState === s) { viewState = null; refocusManualInput(); }
       refreshCatalog();
     }).catch(function (err) {
       if (err.isOffline) {
@@ -2863,10 +3036,9 @@
         });
         queueWrite_(appendPayload, "add " + name);
         var label1 = isNewProduct ? "New product added" : "New batch (lot) added";
-        els.resultBody.innerHTML = '<div class="add-card"><h4>' + escapeHtml(label1) + '</h4><p class="add-sub">' + escapeHtml(name) + ' &middot; expiry ' + escapeHtml(parsed.raw) + ' &middot; qty ' + (qtyNum === null ? "N/A" : qtyNum) + '</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
+        if (viewState === s) els.resultBody.innerHTML = '<div class="add-card"><h4>' + escapeHtml(label1) + '</h4><p class="add-sub">' + escapeHtml(name) + ' &middot; expiry ' + escapeHtml(parsed.raw) + ' &middot; qty ' + (qtyNum === null ? "N/A" : qtyNum) + '</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
         pushRecent({ barcode: s.barcode, name: name, tone: "ok", ts: 0 });
-        viewState = null;
-        refocusManualInput();
+        if (viewState === s) { viewState = null; refocusManualInput(); }
         renderCatalog();
         return;
       }
@@ -2912,9 +3084,8 @@
     apiPost(payload).then(function (res) {
       if (!res.ok) throw new Error(res.error || "Could not rename.");
       applyLocally();
-      els.resultBody.innerHTML = '<div class="add-card"><h4>Renamed</h4><p class="add-sub">' + escapeHtml(newName) + '</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
-      viewState = null;
-      refocusManualInput();
+      if (viewState === s) els.resultBody.innerHTML = '<div class="add-card"><h4>Renamed</h4><p class="add-sub">' + escapeHtml(newName) + '</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
+      if (viewState === s) { viewState = null; refocusManualInput(); }
       refreshCatalog();
     }).catch(function (err) {
       if (err.isOffline) {
@@ -2928,9 +3099,8 @@
           if (matches) { b.brand = brandVal; b.productOnly = productVal; b.name = newName; b.pendingSync = true; }
         });
         queueWrite_(payload, "rename to " + newName);
-        els.resultBody.innerHTML = '<div class="add-card"><h4>Renamed</h4><p class="add-sub">' + escapeHtml(newName) + '</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
-        viewState = null;
-        refocusManualInput();
+        if (viewState === s) els.resultBody.innerHTML = '<div class="add-card"><h4>Renamed</h4><p class="add-sub">' + escapeHtml(newName) + '</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
+        if (viewState === s) { viewState = null; refocusManualInput(); }
         renderCatalog();
         return;
       }
@@ -2988,10 +3158,9 @@
       b.qty = (res.newQty === null || res.newQty === undefined) ? newQty : res.newQty;
       if (notesChanged) b.notes = notesTrimmed;
       var tone = qtyState(b).tone === "info" ? "ok" : qtyState(b).tone;
-      els.resultBody.innerHTML = '<div class="add-card"><h4>Updated</h4><p class="add-sub">' + escapeHtml(b.name) + ' &middot; expiry ' + escapeHtml(formatMonthYear(b.expiry)) + ' &middot; now ' + b.qty + ' units</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
+      if (viewState === s) els.resultBody.innerHTML = '<div class="add-card"><h4>Updated</h4><p class="add-sub">' + escapeHtml(b.name) + ' &middot; expiry ' + escapeHtml(formatMonthYear(b.expiry)) + ' &middot; now ' + b.qty + ' units</p><p class="add-sub">Saved to your MASTER INVENTORY sheet.</p></div>';
       pushRecent({ barcode: b.barcode, name: b.name, tone: tone, ts: 0 });
-      viewState = null;
-      refocusManualInput();
+      if (viewState === s) { viewState = null; refocusManualInput(); }
       refreshCatalog();
     }).catch(function (err) {
       if (err.isOffline) {
@@ -3008,10 +3177,9 @@
         }
         queueWrite_(payload, "update " + b.name);
         var tone1 = qtyState(b).tone === "info" ? "ok" : qtyState(b).tone;
-        els.resultBody.innerHTML = '<div class="add-card"><h4>Updated</h4><p class="add-sub">' + escapeHtml(b.name) + ' &middot; expiry ' + escapeHtml(formatMonthYear(b.expiry)) + ' &middot; now ' + b.qty + ' units</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
+        if (viewState === s) els.resultBody.innerHTML = '<div class="add-card"><h4>Updated</h4><p class="add-sub">' + escapeHtml(b.name) + ' &middot; expiry ' + escapeHtml(formatMonthYear(b.expiry)) + ' &middot; now ' + b.qty + ' units</p><p class="add-sub">Saved on this device — will sync to your sheet once you&rsquo;re back online.</p></div>';
         pushRecent({ barcode: b.barcode, name: b.name, tone: tone1, ts: 0 });
-        viewState = null;
-        refocusManualInput();
+        if (viewState === s) { viewState = null; refocusManualInput(); }
         renderCatalog();
         return;
       }
@@ -3201,6 +3369,9 @@
   function handleReceivingCode(rawCode) {
     var code = (rawCode || "").trim();
     if (!code) return;
+    // The same box still in front of the camera while you type its quantity — ignore it
+    // instead of redrawing the card and wiping what you typed.
+    if (receivingCurrent && receivingCurrent.barcode === code) return;
     var cached = cachedMatchesForCode(code);
     var existing = sortBatches(cached || batchesForBarcode(code));
     renderReceivingCard(code, existing);
@@ -3219,7 +3390,7 @@
 
   function confirmReceiving() {
     var cur = receivingCurrent;
-    if (!cur) return;
+    if (!cur || cur.saving) return; // already saving this one (double tap / double Enter)
     var mmEl = document.getElementById("rcvExpiryMonth");
     var yyEl = document.getElementById("rcvExpiryYear");
     var qtyEl = document.getElementById("rcvQty");
@@ -3246,8 +3417,10 @@
     var confirmBtn = document.getElementById("rcvConfirmBtn");
     var confirmBtnLabel = confirmBtn ? confirmBtn.textContent : "";
     if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "Saving…"; }
+    cur.saving = true;
 
     function resetBtn() {
+      cur.saving = false;
       if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = confirmBtnLabel; }
     }
 
@@ -3258,6 +3431,8 @@
       renderReceivingTally();
       renderReceivingLog();
       pushRecent({ barcode: cur.barcode, name: name, tone: "ok", ts: 0 });
+      cur.saving = false;
+      if (receivingCurrent !== cur) return; // the next box is already on screen — leave it
       receivingCurrent = null;
       els.receivingCardBody.innerHTML = document.body.classList.contains("desktop-mode")
         ? '<p class="scan-note">Logged. Type the next barcode below.</p>'
@@ -3265,6 +3440,20 @@
       refocusReceivingInput();
     }
 
+    if (exactMatch && !usingImported && (exactMatch.row === null || exactMatch.row === undefined)) {
+      // This lot was created offline and hasn't reached the sheet yet — add to that
+      // pending save instead of sending an update for a row that doesn't exist yet.
+      if (addToQueuedAppend_(exactMatch.barcode, exactMatch.expiryRaw, qtyNum)) {
+        exactMatch.qty = (Number(exactMatch.qty) || 0) + qtyNum;
+        onLogged(qtyNum);
+        renderCatalog();
+      } else {
+        resetBtn();
+        alert("This batch is still being saved to the sheet — wait a few seconds and try again.");
+        refreshCatalog();
+      }
+      return;
+    }
     if (exactMatch) {
       var adjustPayload = { op: "adjust", row: exactMatch.row, barcode: exactMatch.barcode, delta: qtyNum, sign: 1 };
       if (usingImported) {
@@ -3393,7 +3582,9 @@
   function renderDispatchTally() {
     if (!els.dispatchTallyLabel) return;
     els.dispatchTallyLabel.textContent = dispatchCourierLabel(dispatchCourier) + " · today";
-    els.dispatchTallySub.textContent = 'writes to "' + dispatchTabNameClient_(dispatchCourier) + '"';
+    els.dispatchTallySub.textContent = DISPATCH_TOOLS_ENABLED
+      ? 'writes to "' + dispatchTabNameClient_(dispatchCourier) + '"'
+      : 'from "' + dispatchTabNameClient_(dispatchCourier) + '"';
     var entry = dispatchCounts[dispatchCourier];
     els.dispatchTallyNum.textContent = entry ? entry.count : 0;
   }
@@ -3584,6 +3775,137 @@
   }
   if (els.dispatchManifestBtn) {
     els.dispatchManifestBtn.addEventListener("click", printDispatchManifest);
+  }
+
+  // ---- Daily report --------------------------------------------------------
+  // Reads the DAILY REPORT tab in DAILY OUTPUT for the picked range (today by
+  // default) and shows its courier summary as-is, plus one line with Beirut's unpaid
+  // count. For any other range the backend switches the tab's Start/End dates for a
+  // few seconds, reads the summary, and puts the dates back exactly as they were.
+  var dailyReportSeq = 0;
+  var dailyReportShownKey = "";
+  function localIsoDate_(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function dailyReportRange_() {
+    var today = localIsoDate_(new Date());
+    var iso = /^\d{4}-\d{2}-\d{2}$/;
+    var from = els.dailyReportFrom.value, to = els.dailyReportTo.value;
+    if (!iso.test(to) || to > today) to = today;
+    if (!iso.test(from) || from > to) from = to;
+    els.dailyReportFrom.value = from; els.dailyReportTo.value = to;
+    els.dailyReportFrom.max = today; els.dailyReportTo.max = today;
+    return { from: from, to: to };
+  }
+  function markDailyReportQuick_() {
+    if (!els.dailyReportQuick) return;
+    var now = new Date();
+    var today = localIsoDate_(now);
+    var y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    var first = localIsoDate_(new Date(now.getFullYear(), now.getMonth(), 1));
+    var f = els.dailyReportFrom.value, t = els.dailyReportTo.value;
+    var which = (f === today && t === today) ? "today"
+      : (f === localIsoDate_(y) && t === localIsoDate_(y)) ? "yesterday"
+      : (f === first && t === today) ? "month" : "";
+    var chips = els.dailyReportQuick.querySelectorAll("[data-range]");
+    for (var i = 0; i < chips.length; i++) chips[i].classList.toggle("active", chips[i].getAttribute("data-range") === which);
+  }
+  function renderDailyReport_(res) {
+    var headers = res.headers || [];
+    var rows = res.rows || [];
+    if (!headers.length || !rows.length) {
+      els.dailyReportBody.innerHTML = '<div class="recent-empty">Couldn’t find the courier summary on the DAILY REPORT tab.</div>';
+    } else {
+      var html = '<table class="report-table"><thead><tr>' +
+        headers.map(function (h) { return "<th scope=\"col\">" + escapeHtml(h) + "</th>"; }).join("") +
+        "</tr></thead><tbody>";
+      html += rows.map(function (r) {
+        var isTotal = String(r[0] || "").trim().toUpperCase() === "TOTAL";
+        return "<tr" + (isTotal ? " class=\"total\"" : "") + ">" + headers.map(function (h, i) {
+          return "<td>" + escapeHtml(r[i] == null ? "" : String(r[i])) + "</td>";
+        }).join("") + "</tr>";
+      }).join("");
+      html += "</tbody></table>";
+      els.dailyReportBody.innerHTML = html;
+    }
+    if (typeof res.beirutUnpaid === "number") {
+      els.dailyReportBeirut.innerHTML = "<span>Beirut &middot; still unpaid <small>(all dates)</small></span><span class=\"n\">" + res.beirutUnpaid + "</span>";
+      els.dailyReportBeirut.hidden = false;
+    } else {
+      els.dailyReportBeirut.hidden = true;
+    }
+    if (els.dailyReportNote) {
+      els.dailyReportNote.textContent = (res.dateLabel ? res.dateLabel + " · " : "") +
+        "from the DAILY REPORT tab in DAILY OUTPUT" + (res.isToday ? " (today keeps changing as orders go out)." : ".");
+    }
+  }
+  function loadDailyReport(refresh) {
+    if (!els.dailyReportBody || !els.dailyReportFrom || !els.dailyReportTo) return;
+    var range = dailyReportRange_();
+    markDailyReportQuick_();
+    var key = range.from + "_" + range.to;
+    var seq = ++dailyReportSeq;
+    // Re-opening the tab on the same range keeps the current table on screen while it
+    // reloads; "Loading" only shows when the range changed or nothing has loaded yet.
+    if (dailyReportShownKey !== key) {
+      els.dailyReportBody.innerHTML = '<div class="recent-empty">Loading&hellip;' +
+        (range.to !== localIsoDate_(new Date()) || range.from !== range.to ? " (a past range takes a few seconds)" : "") + '</div>';
+      els.dailyReportBeirut.hidden = true;
+    }
+    if (els.dailyReportRefreshBtn) els.dailyReportRefreshBtn.classList.add("spinning");
+    apiPost({ op: "dailyReport", from: range.from, to: range.to, refresh: !!refresh }).then(function (res) {
+      if (seq !== dailyReportSeq) return; // a newer range was picked meanwhile
+      if (els.dailyReportRefreshBtn) els.dailyReportRefreshBtn.classList.remove("spinning");
+      if (res && res.authError) return;
+      if (!res || !res.ok) {
+        dailyReportShownKey = "";
+        els.dailyReportBeirut.hidden = true;
+        els.dailyReportBody.innerHTML = '<div class="recent-empty">' + escapeHtml((res && res.error) || "Couldn’t load the daily report.") + '</div>';
+        return;
+      }
+      dailyReportShownKey = key;
+      renderDailyReport_(res);
+    }).catch(function (err) {
+      if (seq !== dailyReportSeq) return;
+      if (els.dailyReportRefreshBtn) els.dailyReportRefreshBtn.classList.remove("spinning");
+      if (dailyReportShownKey === key) return; // keep the last good table on a network blip
+      els.dailyReportBody.innerHTML = '<div class="recent-empty">' + (err && err.isTimeout
+        ? "The report took too long to load — tap &#8635; to try again."
+        : "Couldn’t reach the sheet — try again once you’re online.") + '</div>';
+    });
+  }
+  if (els.dailyReportFrom && els.dailyReportTo) {
+    els.dailyReportFrom.value = els.dailyReportTo.value = localIsoDate_(new Date());
+    els.dailyReportFrom.addEventListener("change", function () {
+      // Moving the start past the end drags the end along, so the range stays valid.
+      if (els.dailyReportTo.value && els.dailyReportFrom.value > els.dailyReportTo.value) els.dailyReportTo.value = els.dailyReportFrom.value;
+      loadDailyReport(false);
+    });
+    els.dailyReportTo.addEventListener("change", function () {
+      if (els.dailyReportFrom.value && els.dailyReportTo.value < els.dailyReportFrom.value) els.dailyReportFrom.value = els.dailyReportTo.value;
+      loadDailyReport(false);
+    });
+  }
+  if (els.dailyReportQuick) {
+    els.dailyReportQuick.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-range]");
+      if (!btn) return;
+      var now = new Date();
+      var which = btn.getAttribute("data-range");
+      var today = localIsoDate_(now);
+      if (which === "today") { els.dailyReportFrom.value = today; els.dailyReportTo.value = today; }
+      else if (which === "yesterday") {
+        var y = localIsoDate_(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+        els.dailyReportFrom.value = y; els.dailyReportTo.value = y;
+      } else if (which === "month") {
+        els.dailyReportFrom.value = localIsoDate_(new Date(now.getFullYear(), now.getMonth(), 1));
+        els.dailyReportTo.value = today;
+      }
+      loadDailyReport(false);
+    });
+  }
+  if (els.dailyReportRefreshBtn) {
+    els.dailyReportRefreshBtn.addEventListener("click", function () { loadDailyReport(true); });
   }
 
   function renderDispatchSearchResult_(res, queryDigits) {
@@ -4040,6 +4362,17 @@
       renderCatalog();
       return;
     }
+    if (batch.row === null || batch.row === undefined) {
+      if (addToQueuedAppend_(batch.barcode, batch.expiryRaw, sign > 0 ? delta : -delta)) {
+        var cq = (batch.qty === null || batch.qty === undefined) ? 0 : Number(batch.qty);
+        batch.qty = sign > 0 ? cq + delta : Math.max(0, cq - delta);
+        renderCatalog();
+      } else {
+        alert("This batch is still being saved to the sheet — wait a few seconds and try again.");
+        refreshCatalog();
+      }
+      return;
+    }
     inventoryBusyRow = batch.row;
     renderCatalog();
     var adjustPayload = { op: "adjust", row: batch.row, barcode: batch.barcode, delta: delta, sign: sign };
@@ -4098,6 +4431,196 @@
     }
   }
 
+  // --- Website stock in the Inventory tab ---
+  // Read from the backend's "Website Stock" snapshot (refreshed every 3 hours, or with
+  // the Refresh link), not fetched live per card — checking ~900 product pages on every
+  // visit would take minutes. The Scan tab's Website row is still fully live.
+  var webSnap = { map: null, updatedAt: null, refreshing: null, loading: false, error: "", notice: "", loadedAt: 0 };
+  var webFilter = "all";
+  var webPollTimer = null;
+  var WEB_SNAPSHOT_RELOAD_MS = 3 * 60 * 1000;
+
+  function webKey(code) {
+    var t = String(code || "").trim().toUpperCase().replace(/\s+/g, "");
+    if (/^\d+$/.test(t)) t = t.replace(/^0+/, "") || "0";
+    return t;
+  }
+
+  function webFor(p) {
+    if (!webSnap.map || !p.hasBarcode) return null;
+    return webSnap.map[webKey(p.barcode)] || null;
+  }
+
+  // Which quick filters this product belongs to.
+  function webFlags(p) {
+    var w = webFor(p);
+    var flags = { all: true, soldout: false, expiring: false, notlisted: false };
+    if (!w) return flags;
+    var forSale = w.status === "ok" && w.qty !== null && w.qty > 0;
+    flags.soldout = w.status === "ok" && w.qty !== null && w.qty <= 0;
+    flags.notlisted = w.status === "not_listed";
+    var ex = expiryState(p.nearest.expiry);
+    // Nearest batch expires within 60 days — or has already expired — and the website still sells it.
+    flags.expiring = forSale && typeof ex.days === "number" && ex.days <= EXPIRING_SOON_DAYS;
+    return flags;
+  }
+
+  function loadWebSnapshot(force) {
+    if (usingImported) return;
+    if (webSnap.loading) return;
+    if (!force && webSnap.map && Date.now() - webSnap.loadedAt < WEB_SNAPSHOT_RELOAD_MS && !webSnap.refreshing) return;
+    webSnap.loading = true;
+    renderWebStatus();
+    apiPost({ op: "websiteSnapshot" }).then(function (res) {
+      if (!res.ok) throw new Error(res.error || "Couldn’t load website stock.");
+      // While a refresh is running, a poll whose data hasn't changed only updates the
+      // progress line — no full list redraw (that would close the phone keyboard).
+      if (res.refreshing && webSnap.map && res.updatedAt === webSnap.updatedAt) {
+        webSnap.refreshing = res.refreshing;
+        webSnap.loading = false;
+        webSnap.loadedAt = Date.now();
+        renderWebStatus();
+        scheduleWebPoll();
+        return;
+      }
+      var map = {};
+      (res.rows || []).forEach(function (r) {
+        map[webKey(r[0])] = { status: r[1], qty: r[2], price: r[3], compareAt: r[4], url: r[5] };
+      });
+      webSnap.map = res.rows && res.rows.length ? map : null;
+      webSnap.updatedAt = res.updatedAt;
+      webSnap.refreshing = res.refreshing;
+      webSnap.error = "";
+      webSnap.loadedAt = Date.now();
+      webSnap.loading = false;
+      if (activeTab === "inventory") renderCatalog();
+      scheduleWebPoll();
+    }).catch(function (err) {
+      webSnap.loading = false;
+      webSnap.error = err.message;
+      renderWebStatus();
+      scheduleWebPoll(); // one failed check shouldn't freeze "Updating…" — try again
+    });
+  }
+
+  // While a refresh runs in the background, check back every 20s for progress.
+  function scheduleWebPoll() {
+    if (webPollTimer) { clearTimeout(webPollTimer); webPollTimer = null; }
+    if (webSnap.refreshing) {
+      webPollTimer = setTimeout(function () { webPollTimer = null; loadWebSnapshot(true); }, 20000);
+    }
+  }
+
+  function refreshWebSnapshot() {
+    if (webSnap.refreshing) return;
+    webSnap.refreshing = { done: 0, total: 0 };
+    renderWebStatus();
+    apiPost({ op: "websiteSnapshotRefresh" }).then(function (res) {
+      if (!res || !res.ok) throw new Error((res && res.error) || "Couldn’t start the refresh.");
+      if (res.status === "recent") {
+        webSnap.refreshing = null;
+        webSnap.notice = "Updated recently — Refresh is available again in " + res.retryInMinutes + " min";
+        renderWebStatus();
+        return;
+      }
+      webSnap.notice = "";
+      loadWebSnapshot(true);
+    }).catch(function (err) {
+      webSnap.refreshing = null;
+      webSnap.error = err.message;
+      renderWebStatus();
+    });
+  }
+
+  function formatWebTime(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    var today = new Date();
+    var time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return d.toDateString() === today.toDateString() ? time : d.toLocaleDateString([], { day: "numeric", month: "short" }) + ", " + time;
+  }
+
+  function renderWebStatus() {
+    if (!els.webStatus) return;
+    if (usingImported) { els.webStatus.innerHTML = ""; return; }
+    var text;
+    if (webSnap.refreshing) {
+      var r = webSnap.refreshing;
+      text = "Updating website stock" + (r.total ? "… " + r.done + " of " + r.total : "…");
+    } else if (webSnap.loading && !webSnap.map) {
+      text = "Loading website stock…";
+    } else if (webSnap.error) {
+      text = "Couldn’t load website stock: " + webSnap.error;
+    } else if (webSnap.notice) {
+      text = webSnap.notice;
+    } else if (webSnap.updatedAt) {
+      text = "Website stock updated " + formatWebTime(webSnap.updatedAt);
+    } else {
+      text = "Website stock not loaded yet";
+    }
+    els.webStatus.innerHTML = '<span>' + escapeHtml(text) + '</span>' +
+      '<button type="button" id="webRefreshBtn"' + (webSnap.refreshing ? " disabled" : "") + '>' + (webSnap.refreshing ? "Refreshing…" : "Refresh") + '</button>';
+    var btn = document.getElementById("webRefreshBtn");
+    if (btn && !webSnap.refreshing) btn.addEventListener("click", refreshWebSnapshot);
+  }
+
+  function renderWebChips(list) {
+    if (!els.webChips) return;
+    if (!webSnap.map || usingImported) { els.webChips.innerHTML = ""; els.webChips.hidden = true; return; }
+    els.webChips.hidden = false;
+    var counts = { all: list.length, soldout: 0, expiring: 0, notlisted: 0 };
+    list.forEach(function (p) {
+      var f = webFlags(p);
+      if (f.soldout) counts.soldout++;
+      if (f.expiring) counts.expiring++;
+      if (f.notlisted) counts.notlisted++;
+    });
+    var chips = [
+      { id: "all", label: "All", tone: "" },
+      { id: "soldout", label: "Sold out online", tone: "crit" },
+      { id: "expiring", label: "Expiring, still for sale", tone: "warn" },
+      { id: "notlisted", label: "Not on website", tone: "" }
+    ];
+    els.webChips.innerHTML = chips.map(function (c) {
+      return '<button type="button" class="flag-chip ' + c.tone + (webFilter === c.id ? " on" : "") + '" data-web-filter="' + c.id + '" aria-pressed="' + (webFilter === c.id) + '">' +
+        c.label + ' <span class="n">' + counts[c.id] + '</span></button>';
+    }).join("");
+  }
+
+  if (els.webChips) {
+    els.webChips.addEventListener("click", function (e) {
+      var btn = e.target.closest ? e.target.closest("[data-web-filter]") : null;
+      if (!btn) return;
+      var id = btn.getAttribute("data-web-filter");
+      webFilter = (webFilter === id && id !== "all") ? "all" : id; // tap again to clear
+      catalogVisibleCount = CATALOG_LIMIT;
+      renderCatalog();
+    });
+  }
+
+  function webRowHtml(p) {
+    if (!webSnap.map || !p.hasBarcode || usingImported) return "";
+    var w = webFor(p);
+    var inner;
+    if (!w) {
+      inner = '<span>Not checked yet</span>';
+    } else if (w.status === "ok") {
+      var price = w.price !== null ? formatUsd(w.price) : "";
+      var was = (w.compareAt !== null && w.price !== null && w.compareAt > w.price) ? "<s>" + formatUsd(w.compareAt) + "</s>" : "";
+      if (w.qty !== null && w.qty <= 0) {
+        inner = '<span class="wval crit">Sold out' + (price ? " · " + price : "") + '</span>' + was;
+      } else {
+        inner = '<span class="wval">' + (w.qty === null ? "" : w.qty + " in stock") + (price ? " · " + price : "") + '</span>' + was;
+      }
+    } else if (w.status === "not_listed") {
+      inner = '<span>Not on the website</span>';
+    } else {
+      inner = '<span>Couldn’t read website stock</span>';
+    }
+    return '<div class="web-row"><span class="wlabel">Website</span>' + inner + '</div>';
+  }
+
   function renderCatalog() {
     var filterText = (els.catalogSearch.value || "").trim().toLowerCase();
     var yearFilter = els.catalogYear.value;
@@ -4113,6 +4636,11 @@
         return p.batches.some(function (b) { return batchMatchesYearMonth(b, yearFilter, monthFilter); });
       });
     }
+    renderWebChips(list);
+    if (webFilter !== "all" && webSnap.map) {
+      list = list.filter(function (p) { return webFlags(p)[webFilter]; });
+    }
+    renderWebStatus();
     var shown = list.slice(0, catalogVisibleCount);
     els.catalog.innerHTML = "";
     shown.forEach(function (p) {
@@ -4134,7 +4662,8 @@
         '<div class="inv-code">' + escapeHtml(p.hasBarcode ? p.barcode : "no barcode") + '</div>' +
         '<div class="inv-badges">' + badges + '</div>' +
         '</div>' +
-        (single ? (canWrite() ? inventoryStepperHtml(single) : "") : '<span class="inv-chev">›</span>');
+        (single ? (canWrite() ? inventoryStepperHtml(single) : "") : '<span class="inv-chev">›</span>') +
+        webRowHtml(p);
       card.addEventListener("click", function () {
         setTab("scan");
         if (single && !single.hasBarcode) {
@@ -4152,7 +4681,7 @@
       }
       els.catalog.appendChild(card);
     });
-    var filtered = !!(filterText || yearFilter || monthFilter);
+    var filtered = !!(filterText || yearFilter || monthFilter || (webFilter !== "all" && webSnap.map));
     // Distinct products (list.length) and total rows (ACTIVE_BATCHES.length) are
     // different numbers on purpose — one product can have several expiry batches,
     // each its own row in MASTER INVENTORY. Only show the row count when nothing is
@@ -4174,6 +4703,7 @@
 
   function refreshCatalog() {
     if (usingImported) { renderCatalog(); return; }
+    loadWebSnapshot(false);
     catalogLoading = true;
     renderCatalog();
     apiAll().then(function (batches) {
@@ -4256,6 +4786,7 @@
   }
 
   function handleCSV(text, filename) {
+    webFilter = "all";
     var rows = parseCSV(text);
     if (!rows.length) { setImportStatus("That file looks empty.", true); return; }
     var headers = rows[0].map(normalizeHeader);
@@ -4329,6 +4860,7 @@
     els.catalogSearch.value = "";
     els.catalogYear.value = "";
     els.catalogMonth.value = "";
+    webFilter = "all";
     catalogVisibleCount = CATALOG_LIMIT;
     refreshCatalog();
   });
@@ -4520,6 +5052,7 @@
   els.viewfinder.addEventListener("click", tapToFocus_);
 
   function startScan(mode) {
+    if (scanning) return; // a second tap before the preview starts would open a second camera
     scanMode = mode === "receiving" ? "receiving" : mode === "dispatch" ? "dispatch" : "lookup";
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.ZXing) {
       els.camNote.textContent = "Camera access isn't available in this browser. Use manual entry or the catalog below.";
@@ -4599,7 +5132,7 @@
           // no barcode recognized in this frame — expected on most attempts, just keep trying.
           // Temporary diagnostic logging (safe to remove later): surfaces the real ZXing error
           // instead of silently swallowing it, in case something other than "not found" occurs.
-          if (window.console && console.debug) console.debug("[scan] decode attempt failed:", e && e.message ? e.message : e);
+          // (no-barcode-in-this-frame is the normal case — nothing to log)
         }
         scanAttempts++;
         els.vfStatus.textContent = (scanMode === "receiving" || scanMode === "dispatch" ? "Point at the next barcode… (scanning #" : "Point camera at a barcode… (scanning #") + scanAttempts + ")";
