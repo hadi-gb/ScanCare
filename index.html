@@ -1449,6 +1449,48 @@
     font-size: 15px;
     cursor: pointer;
   }
+  /* On-screen keys for the login page — a fallback for the iPhone Home Screen bug
+     where the system keyboard doesn't come up. Only offered on touch screens. */
+  /* With the keys open the card can be taller than a small phone: let it scroll, and
+     centre it with auto margins so its top is never pushed off-screen. */
+  .lock-screen { overflow-y: auto; align-items: flex-start; }
+  .lock-screen .lock-card { margin-block: auto; }
+  .lock-card .kp-key, .lock-card .kp-toggle { -webkit-tap-highlight-color: transparent; }
+  .lock-card .kp-toggle {
+    display: none;
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 4px;
+    background: transparent;
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: underline;
+  }
+  @media (pointer: coarse) { .lock-card .kp-toggle { display: block; } }
+  .lock-card input.kp-target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .kp { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .kp-row { display: flex; gap: 4px; justify-content: center; }
+  .lock-card .kp-key {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 17px;
+    font-weight: 600;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .lock-card .kp-key.wide { flex-grow: 1.6; font-family: "Work Sans", sans-serif; font-size: 13px; }
+  .lock-card .kp-key.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+  .lock-card .kp-key.go { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); flex-grow: 2.4; font-family: "Work Sans", sans-serif; font-size: 14px; }
+  .lock-card .kp-key:active { transform: scale(0.96); }
   .lock-error {
     color: var(--critical);
     font-size: 13px;
@@ -1531,6 +1573,8 @@
     <input id="lockPassword" type="password" placeholder="Password" autocomplete="current-password">
     <button id="lockSubmit" type="button">Log in</button>
     <div class="lock-error" id="lockError"></div>
+    <button type="button" class="kp-toggle" id="kpToggle">Keyboard not showing? Type with on-screen keys</button>
+    <div class="kp" id="kpPad" hidden></div>
   </div>
 </div>
 
@@ -1966,6 +2010,7 @@
 
   function showApp() {
     var s = readSession();
+    if (typeof kpClose === "function" && kpPad && !kpPad.hidden) kpClose();
     lockScreen.hidden = true;
     sessionBar.hidden = false;
     sessionUserLabel.textContent = s ? (s.username + (s.role === "admin" ? " · admin" : "")) : "";
@@ -2028,6 +2073,82 @@
   }
 
   lockSubmit.addEventListener("click", attemptLogin);
+
+  // ---- On-screen login keys ------------------------------------------------
+  // Some iPhones never show the system keyboard in apps added to the Home Screen
+  // (an iOS bug). These keys let you type your username and password without it.
+  var kpToggle = document.getElementById("kpToggle");
+  var kpPad = document.getElementById("kpPad");
+  var kpTarget = lockUsername;
+  var kpShift = false, kpSymbols = false;
+  var KP_LETTERS = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  var KP_SYMBOLS = ["1234567890", "!@#$%^&*()", "-_=+.,?/:;", "'\"[]{}<>~|\\"];
+  function kpSetTarget(input) {
+    kpTarget = input;
+    lockUsername.classList.toggle("kp-target", input === lockUsername);
+    lockPassword.classList.toggle("kp-target", input === lockPassword);
+  }
+  function kpKey(label, attrs, cls) {
+    return '<button type="button" class="kp-key' + (cls ? " " + cls : "") + '" ' + attrs + '>' + label + '</button>';
+  }
+  function kpRender() {
+    var rows = kpSymbols ? KP_SYMBOLS : KP_LETTERS;
+    var html = rows.map(function (row, i) {
+      var keys = row.split("").map(function (ch) {
+        var out = (!kpSymbols && kpShift) ? ch.toUpperCase() : ch;
+        return kpKey(escapeHtml(out), 'data-ch="' + escapeHtml(out) + '"');
+      }).join("");
+      if (i === rows.length - 1) {
+        keys = (kpSymbols ? "" : kpKey("&#8679;", 'data-act="shift" aria-label="Shift"', "wide" + (kpShift ? " on" : ""))) +
+          keys + kpKey("&#9003;", 'data-act="back" aria-label="Delete"', "wide");
+      }
+      return '<div class="kp-row">' + keys + '</div>';
+    }).join("");
+    html += '<div class="kp-row">' +
+      kpKey(kpSymbols ? "abc" : "#+=", 'data-act="sym"', "wide") +
+      kpKey("space", 'data-ch=" "', "wide") +
+      kpKey(kpTarget === lockUsername ? "Next" : "Log in", 'data-act="go"', "go") +
+      '</div>';
+    kpPad.innerHTML = html;
+  }
+  function kpOpen() {
+    kpPad.hidden = false;
+    kpToggle.hidden = true;
+    // Stop the (broken) system keyboard from being asked for at all.
+    [lockUsername, lockPassword].forEach(function (el) { el.readOnly = true; el.setAttribute("inputmode", "none"); el.blur(); });
+    kpSetTarget(lockUsername.value ? lockPassword : lockUsername);
+    kpRender();
+  }
+  function kpClose() {
+    kpPad.hidden = true;
+    kpToggle.hidden = false;
+    [lockUsername, lockPassword].forEach(function (el) { el.readOnly = false; el.removeAttribute("inputmode"); el.classList.remove("kp-target"); });
+  }
+  if (kpToggle && kpPad) {
+    kpToggle.addEventListener("click", kpOpen);
+    [lockUsername, lockPassword].forEach(function (el) {
+      el.addEventListener("click", function () { if (!kpPad.hidden) { kpSetTarget(el); kpRender(); } });
+    });
+    kpPad.addEventListener("click", function (e) {
+      var k = e.target.closest(".kp-key");
+      if (!k) return;
+      var ch = k.getAttribute("data-ch");
+      var act = k.getAttribute("data-act");
+      if (ch !== null) {
+        kpTarget.value += ch;
+        if (kpShift && !kpSymbols) { kpShift = false; kpRender(); }
+      } else if (act === "back") {
+        kpTarget.value = kpTarget.value.slice(0, -1);
+      } else if (act === "shift") {
+        kpShift = !kpShift; kpRender();
+      } else if (act === "sym") {
+        kpSymbols = !kpSymbols; kpRender();
+      } else if (act === "go") {
+        if (kpTarget === lockUsername) { kpSetTarget(lockPassword); kpRender(); }
+        else attemptLogin();
+      }
+    });
+  }
   [lockUsername, lockPassword].forEach(function (el) {
     el.addEventListener("keydown", function (e) { if (e.key === "Enter") attemptLogin(); });
   });
