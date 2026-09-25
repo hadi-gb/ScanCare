@@ -1979,8 +1979,24 @@
     lockScreen.hidden = false;
     lockError.textContent = message || "";
     lockPassword.value = "";
-    setTimeout(function () { lockUsername.focus(); }, 50);
+    // Only auto-focus with a mouse/keyboard. On iPhone, focusing a field from code
+    // (not from a tap) leaves it "focused" with no keyboard, and tapping it again
+    // then does nothing — which looks like the login page is frozen.
+    if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
+      setTimeout(function () { lockUsername.focus(); }, 50);
+    }
   }
+  // Safety net for the same iPhone quirk (it also happens in home-screen apps for
+  // other reasons): if a login field is already focused when tapped, re-focus it
+  // inside the tap itself, which is what makes iOS bring the keyboard up.
+  [lockUsername, lockPassword].forEach(function (input) {
+    input.addEventListener("touchend", function () {
+      if (document.activeElement === input) {
+        input.blur();
+        input.focus();
+      }
+    });
+  });
 
   function attemptLogin() {
     var username = lockUsername.value.trim();
