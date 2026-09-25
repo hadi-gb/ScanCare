@@ -2290,7 +2290,7 @@
 
   function qtyState(batch) {
     if (batch.qty === null || batch.qty === undefined || batch.qty === "") {
-      return { value: "—", sub: "Shopify total (not connected)", tone: "info", verified: false };
+      return { value: "—", sub: "not counted on sheet", tone: "info", verified: false };
     }
     var q = Number(batch.qty);
     var tone = q <= 0 ? "critical" : (q <= LOW_STOCK_THRESHOLD ? "warn" : "ok");
