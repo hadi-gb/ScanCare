@@ -2822,7 +2822,7 @@
         document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
         var el = invEl("invExportStatus");
         el.hidden = false; el.className = "inv-status ok";
-        el.innerHTML = escapeHtml(d.filename) + " — " + d.lines + " lines, " + d.units + " units. Also saved in Drive: <a href=\"" + escapeHtml(d.url) + "\" target=\"_blank\" rel=\"noopener\">open</a>.";
+        el.textContent = "Downloaded " + d.filename + " — " + d.lines + " lines, " + d.units + " units.";
       })
       .catch(function (err) { invSay("invExportStatus", err.message || "Couldn't build the file.", "err"); })
       .then(function () { btn.disabled = false; });
