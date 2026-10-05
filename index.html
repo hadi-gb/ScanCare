@@ -2693,7 +2693,7 @@
           l.check = l.status === "check" || l.uncertain;
           return l;
         });
-        invSay("invStatus", "");
+        invSay("invStatus", d.warning || "", d.warning ? "err" : "");
         invEl("invClearBtn").hidden = false;
         invRenderReview();
       })
