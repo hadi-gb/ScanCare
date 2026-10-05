@@ -1552,6 +1552,42 @@
     white-space: nowrap;
   }
   [hidden] { display: none !important; }
+
+  /* ---- Invoices tab ---- */
+  .inv-drop { display:block; border:2px dashed var(--accent); border-radius:12px; padding:20px 14px; text-align:center; background:var(--accent-soft); cursor:pointer; }
+  .inv-drop strong { display:block; color:var(--accent); font-family:"Manrope",sans-serif; font-size:1rem; }
+  .inv-drop span { font-size:0.8rem; color:var(--text-muted); }
+  .inv-thumbs { display:flex; gap:8px; overflow-x:auto; padding:10px 0 0; }
+  .inv-thumb { position:relative; flex:none; }
+  .inv-thumb img { width:76px; height:100px; object-fit:cover; border-radius:8px; border:1px solid var(--border); display:block; }
+  .inv-thumb button { position:absolute; top:3px; right:3px; width:26px; height:26px; padding:0; border-radius:50%; background:var(--surface); color:var(--text); border:1px solid var(--border); }
+  .inv-actions { display:flex; gap:8px; margin-top:12px; }
+  .inv-status { margin-top:10px; padding:10px 12px; border-radius:10px; background:var(--info-soft); color:var(--text); font-size:0.85rem; }
+  .inv-status.err { background:var(--critical-soft); color:var(--critical); }
+  .inv-status.ok { background:var(--ok-soft); }
+  .inv-head { font-size:0.9rem; margin-bottom:8px; }
+  .inv-head b { font-family:"Manrope",sans-serif; }
+  .inv-tally { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .inv-chip { font-size:0.74rem; font-weight:700; border-radius:999px; padding:3px 9px; background:var(--surface-2); color:var(--text); }
+  .inv-chip.ok { background:var(--ok-soft); color:var(--ok); }
+  .inv-chip.warn { background:var(--warn-soft); color:var(--warn); }
+  .inv-chip.bad { background:var(--critical-soft); color:var(--critical); }
+  .inv-line { border:1px solid var(--border); border-left:4px solid var(--ok); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--surface); }
+  .inv-line.check { border-left-color:var(--warn); background:var(--warn-soft); }
+  .inv-line.none { border-left-color:var(--critical); }
+  .inv-line.off { opacity:0.45; }
+  .inv-src { font-size:0.78rem; color:var(--text-muted); }
+  .inv-match { font-weight:700; font-size:0.9rem; margin:3px 0; }
+  .inv-meta { font-size:0.74rem; color:var(--text-muted); font-family:"IBM Plex Mono",monospace; }
+  .inv-why { font-size:0.78rem; color:var(--warn); margin-top:3px; }
+  .inv-row { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  .inv-row input[type=number] { width:76px; }
+  .inv-row label { font-size:0.78rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
+  .inv-pick { margin-top:8px; }
+  .inv-pick ul { list-style:none; margin:6px 0 0; padding:0; border:1px solid var(--border); border-radius:8px; max-height:260px; overflow:auto; }
+  .inv-pick li button { width:100%; text-align:left; background:transparent; color:var(--text); border:0; border-bottom:1px solid var(--border); border-radius:0; font-weight:500; }
+  .inv-pick li small { display:block; color:var(--text-muted); font-weight:400; }
+  .inv-missing { border:1px solid var(--critical); background:var(--critical-soft); border-radius:10px; padding:10px 12px; font-size:0.85rem; margin-top:4px; }
 </style>
 
 <button type="button" id="themeToggleBtn" class="theme-toggle" aria-label="Switch to light mode">🌙</button>
@@ -1601,6 +1637,7 @@
     <button class="tab-btn" id="tabInventoryBtn" type="button" data-tab="inventory">Inventory</button>
     <button class="tab-btn" id="tabReceivingBtn" type="button" data-tab="receiving" hidden>Receiving</button>
     <button class="tab-btn" id="tabDispatchBtn" type="button" data-tab="dispatch" hidden>Orders</button>
+    <button class="tab-btn" id="tabInvoiceBtn" type="button" data-tab="invoice" hidden>Invoices</button>
   </div>
 
   <main>
@@ -1839,6 +1876,37 @@
     </section>
     </div>
    </div>
+
+   <div id="invoiceView" hidden>
+    <section aria-labelledby="inv-read-h">
+      <h2 id="inv-read-h">Read a supplier invoice</h2>
+      <p class="scan-note">Photograph each page flat and well lit. You get back the BDC file for the Shopify purchase order.</p>
+      <label class="inv-drop" for="invPhotos">
+        <strong>Take or choose photos</strong>
+        <span>One photo per page</span>
+      </label>
+      <input type="file" id="invPhotos" accept="image/*" multiple class="sr-only">
+      <div class="inv-thumbs" id="invThumbs"></div>
+      <div class="inv-actions">
+        <button class="btn-primary" type="button" id="invReadBtn" disabled>Read invoice</button>
+        <button class="btn-ghost" type="button" id="invClearBtn" hidden>Start over</button>
+      </div>
+      <div class="inv-status" id="invStatus" aria-live="polite" hidden></div>
+      <p class="cam-note" id="invCatalogNote"></p>
+    </section>
+
+    <section aria-labelledby="inv-review-h" id="invReview" hidden>
+      <h2 id="inv-review-h">Check the lines</h2>
+      <div class="inv-head" id="invHead"></div>
+      <div class="inv-tally" id="invTally"></div>
+      <div id="invLines"></div>
+      <div class="inv-missing" id="invMissing" hidden></div>
+      <div class="inv-actions">
+        <button class="btn-primary" type="button" id="invExportBtn">Download BDC file</button>
+      </div>
+      <div class="inv-status" id="invExportStatus" aria-live="polite" hidden></div>
+    </section>
+   </div>
   </main>
 
   <footer>
@@ -2005,6 +2073,11 @@
     if (els.tabDispatchBtn) {
       els.tabDispatchBtn.hidden = !canWrite();
       if (!canWrite() && activeTab === "dispatch") setTab("scan");
+    }
+    // Invoices turn a supplier invoice photo into the BDC file — same permission bar.
+    if (els.tabInvoiceBtn) {
+      els.tabInvoiceBtn.hidden = !canWrite();
+      if (!canWrite() && activeTab === "invoice") setTab("scan");
     }
   }
 
@@ -2215,7 +2288,7 @@
   // still gives up and reports back rather than hanging silently.
   var API_TIMEOUT_MS = 45000;
 
-  function apiPost(body) {
+  function apiPost(body, timeoutMs) {
     if (!getSessionToken()) {
       var noLogin = new Error("Not logged in.");
       noLogin.isAuth = true;
@@ -2223,7 +2296,7 @@
     }
     var payload = Object.assign({}, body, { token: getSessionToken() });
     var controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
-    var timeoutId = controller ? setTimeout(function () { controller.abort(); }, API_TIMEOUT_MS) : null;
+    var timeoutId = controller ? setTimeout(function () { controller.abort(); }, timeoutMs || API_TIMEOUT_MS) : null;
     // No explicit Content-Type: keeps this a CORS-safelisted "simple request"
     // (browser defaults to text/plain), which avoids a blocked preflight OPTIONS call.
     return fetch(API_URL, { method: "POST", body: JSON.stringify(payload), signal: controller ? controller.signal : undefined })
@@ -2437,7 +2510,8 @@
    "dispatchRefreshBtn","dispatchFlash","dispatchLast","dispatchLastValue","dispatchEdgeFlash",
    "dispatchManifestBtn","dispatchManifestPrint","manifestCourierLabel","manifestRunCourier","manifestDate","manifestPrintedAt","manifestOrderList","manifestTotal","manifestColsRow",
    "dailyReportFrom","dailyReportTo","dailyReportQuick","dailyReportRefreshBtn","dailyReportBeirut","dailyReportBody","dailyReportNote",
-   "syncBanner","syncBannerText","syncNowBtn"
+   "syncBanner","syncBannerText","syncNowBtn",
+   "tabInvoiceBtn","invoiceView"
   ].forEach(function (id) { els[id] = document.getElementById(id); });
 
   // Desktop mode: once the window is wide enough that reaching for a phone
@@ -2495,7 +2569,7 @@
   var DISPATCH_TOOLS_ENABLED = false;
   if (DISPATCH_TOOLS_ENABLED) { var dt = document.getElementById("dispatchTools"); if (dt) dt.hidden = false; }
   function setTab(next) {
-    if ((next === "receiving" || next === "dispatch") && !canWrite()) next = "scan"; // read-only accounts never see these
+    if ((next === "receiving" || next === "dispatch" || next === "invoice") && !canWrite()) next = "scan"; // read-only accounts never see these
     var CAMERA_TABS = { scan: true, receiving: true, dispatch: DISPATCH_TOOLS_ENABLED };
     var leavingCameraTab = CAMERA_TABS[activeTab] && activeTab !== next;
     if (leavingCameraTab && scanning) stopScan();
@@ -2508,6 +2582,9 @@
     els.inventoryView.hidden = activeTab !== "inventory";
     els.receivingView.hidden = activeTab !== "receiving";
     els.dispatchView.hidden = activeTab !== "dispatch";
+    els.tabInvoiceBtn.classList.toggle("active", activeTab === "invoice");
+    els.invoiceView.hidden = activeTab !== "invoice";
+    if (activeTab === "invoice") invOnShow();
     if (activeTab === "inventory") { renderCatalog(); loadWebSnapshot(false); }
     if (activeTab === "scan") {
       moveScannerBlock(els.scanScannerSlot);
@@ -2545,6 +2622,212 @@
   els.tabInventoryBtn.addEventListener("click", function () { setTab("inventory"); });
   els.tabReceivingBtn.addEventListener("click", function () { setTab("receiving"); });
   els.tabDispatchBtn.addEventListener("click", function () { setTab("dispatch"); });
+  els.tabInvoiceBtn.addEventListener("click", function () { setTab("invoice"); });
+  // ================= Invoices: photo of a supplier invoice -> BDC file =================
+  var inv = { files: [], header: null, lines: [], busy: false, statusChecked: false };
+  var INV_TIMEOUT_MS = 180000; // reading + matching can take a minute or two on slow wifi
+
+  function invEl(id) { return document.getElementById(id); }
+  function invSay(id, msg, kind) {
+    var el = invEl(id); if (!el) return;
+    el.hidden = !msg; el.textContent = msg || "";
+    el.className = "inv-status" + (kind ? " " + kind : "");
+  }
+
+  function invOnShow() {
+    if (inv.statusChecked) return;
+    inv.statusChecked = true;
+    apiPost({ op: "invoiceStatus" }).then(function (d) {
+      var note = invEl("invCatalogNote");
+      if (!d || !d.ok) { note.textContent = ""; return; }
+      if (!d.ready) { note.textContent = "The product catalog isn't set up yet — run runInvoiceSetup once in Apps Script."; return; }
+      var when = d.updatedAt ? new Date(d.updatedAt).toLocaleDateString() : "";
+      note.textContent = d.count.toLocaleString() + " products to match against" + (when ? ", refreshed " + when : "") + ".";
+    }).catch(function () {});
+  }
+
+  function invRenderThumbs() {
+    invEl("invThumbs").innerHTML = inv.files.map(function (f, i) {
+      return '<div class="inv-thumb"><img src="' + f.url + '" alt="Page ' + (i + 1) + '"><button type="button" data-rm="' + i + '" aria-label="Remove page ' + (i + 1) + '">&times;</button></div>';
+    }).join("");
+    invEl("invReadBtn").disabled = !inv.files.length || inv.busy;
+  }
+  invEl("invPhotos").addEventListener("change", function (e) {
+    Array.prototype.forEach.call(e.target.files, function (f) { inv.files.push({ file: f, url: URL.createObjectURL(f) }); });
+    e.target.value = ""; invRenderThumbs();
+  });
+  invEl("invThumbs").addEventListener("click", function (e) {
+    var i = e.target.getAttribute("data-rm"); if (i === null) return;
+    URL.revokeObjectURL(inv.files[i].url); inv.files.splice(Number(i), 1); invRenderThumbs();
+  });
+
+  function invShrink(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () {
+        var max = 2200, w = img.naturalWidth, h = img.naturalHeight, s = Math.min(1, max / Math.max(w, h));
+        var c = document.createElement("canvas"); c.width = Math.round(w * s); c.height = Math.round(h * s);
+        var g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        resolve({ mime: "image/jpeg", data: c.toDataURL("image/jpeg", 0.85).split(",")[1] });
+      };
+      img.onerror = function () { reject(new Error("One of the photos couldn't be opened.")); };
+      img.src = url;
+    });
+  }
+
+  invEl("invReadBtn").addEventListener("click", function () {
+    if (inv.busy || !inv.files.length) return;
+    inv.busy = true; invRenderThumbs();
+    invEl("invReview").hidden = true;
+    invSay("invStatus", "Preparing photos…");
+    Promise.all(inv.files.map(function (f) { return invShrink(f.url); }))
+      .then(function (images) {
+        invSay("invStatus", "Reading the invoice and matching products. This takes about 30–90 seconds…");
+        return apiPost({ op: "invoiceRead", images: images }, INV_TIMEOUT_MS);
+      })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.error) || "Something went wrong while reading.");
+        inv.header = d.header;
+        inv.lines = d.lines.map(function (l) {
+          l.keep = true;
+          l.check = l.status === "check" || l.uncertain;
+          return l;
+        });
+        invSay("invStatus", "");
+        invEl("invClearBtn").hidden = false;
+        invRenderReview();
+      })
+      .catch(function (err) { invSay("invStatus", err.message || "Something went wrong while reading.", "err"); })
+      .then(function () { inv.busy = false; invRenderThumbs(); });
+  });
+
+  invEl("invClearBtn").addEventListener("click", function () {
+    inv.files.forEach(function (f) { URL.revokeObjectURL(f.url); });
+    inv.files = []; inv.lines = []; inv.header = null;
+    invEl("invReview").hidden = true; invEl("invClearBtn").hidden = true;
+    invSay("invStatus", ""); invSay("invExportStatus", ""); invRenderThumbs();
+  });
+
+  var INV_LABEL = { exact: ["Barcode match", "ok"], learned: ["Remembered", "ok"], high: ["Matched", "ok"], picked: ["Picked by you", "ok"], check: ["Check this", "warn"], none: ["Not found", "bad"] };
+
+  function invLineHtml(l, i) {
+    var lab = l.match ? (l.check && l.status !== "check" ? ["Check this", "warn"] : INV_LABEL[l.status] || INV_LABEL.high) : INV_LABEL.none;
+    var cls = "inv-line" + (!l.match ? " none" : (l.check ? " check" : "")) + (l.keep ? "" : " off");
+    var why = [];
+    if (l.why) why.push(escapeHtml(l.why));
+    if (l.uncertain && l.note) why.push("Hard to read: " + escapeHtml(l.note));
+    return '<div class="' + cls + '" data-i="' + i + '">' +
+      '<div class="inv-src">Invoice: ' + escapeHtml(l.description) + (l.code ? " &middot; " + escapeHtml(l.code) : "") + '</div>' +
+      '<div class="inv-match">' + (l.match ? escapeHtml(l.match.title) : "No product found") + '</div>' +
+      (l.match ? '<div class="inv-meta">' + escapeHtml(l.match.barcode || "") + (l.match.sku && l.match.sku !== l.match.barcode ? " · " + escapeHtml(l.match.sku) : "") + '</div>' : "") +
+      (why.length ? '<div class="inv-why">' + why.join(" · ") + '</div>' : "") +
+      '<div class="inv-row">' +
+        '<span class="inv-chip ' + lab[1] + '">' + lab[0] + '</span>' +
+        '<label>Qty <input type="number" inputmode="numeric" min="0" data-k="qty" value="' + (l.qty + (l.free || 0)) + '"></label>' +
+        '<button type="button" class="btn-ghost btn-small" data-act="pick">' + (l.match ? "Change" : "Find") + '</button>' +
+        (l.match && l.check ? '<button type="button" class="btn-ghost btn-small" data-act="ok">It’s right</button>' : "") +
+        '<label><input type="checkbox" data-k="keep"' + (l.keep ? " checked" : "") + '> Keep</label>' +
+      '</div>' +
+      '<div class="inv-pick" hidden><input type="search" placeholder="Search products" data-act="q"><ul></ul></div>' +
+    '</div>';
+  }
+
+  function invRenderReview() {
+    var h = inv.header || {};
+    invEl("invReview").hidden = false;
+    invEl("invHead").innerHTML = "<b>" + escapeHtml(h.supplier || "Supplier") + "</b>" +
+      (h.number ? " · Invoice " + escapeHtml(h.number) : "") + (h.date ? " · " + escapeHtml(h.date) : "");
+    invEl("invLines").innerHTML = inv.lines.map(invLineHtml).join("");
+    invRenderTally();
+  }
+
+  function invRenderTally() {
+    var kept = inv.lines.filter(function (l) { return l.keep; });
+    var ok = kept.filter(function (l) { return l.match && !l.check; }).length;
+    var chk = kept.filter(function (l) { return l.match && l.check; }).length;
+    var miss = kept.filter(function (l) { return !l.match; });
+    var units = kept.filter(function (l) { return l.match; }).reduce(function (a, l) { return a + (Number(l.qty) + Number(l.free || 0)); }, 0);
+    var h = inv.header || {};
+    var t = '<span class="inv-chip">' + kept.length + ' lines</span><span class="inv-chip ok">' + ok + ' matched</span>' +
+      (chk ? '<span class="inv-chip warn">' + chk + ' to check</span>' : "") +
+      (miss.length ? '<span class="inv-chip bad">' + miss.length + ' not found</span>' : "") +
+      '<span class="inv-chip">' + units + ' units in file</span>';
+    if (h.totalQty !== null && h.totalQty !== undefined) {
+      var all = kept.reduce(function (a, l) { return a + Number(l.qty) + Number(l.free || 0); }, 0);
+      t += all === h.totalQty
+        ? '<span class="inv-chip ok">Matches invoice total (' + h.totalQty + ')</span>'
+        : '<span class="inv-chip warn">Invoice says ' + h.totalQty + ' units, lines add up to ' + all + '</span>';
+    }
+    invEl("invTally").innerHTML = t;
+    var mb = invEl("invMissing");
+    mb.hidden = !miss.length;
+    mb.innerHTML = miss.length ? "<b>Not in the file — not found in the store:</b><br>" + miss.map(function (l) { return "• " + escapeHtml(l.description); }).join("<br>") +
+      "<br><span class=\"cam-note\">Could be a new product, a different barcode, or the wrong item. Use Find to pick it if it exists.</span>" : "";
+  }
+
+  invEl("invLines").addEventListener("input", function (e) {
+    var card = e.target.closest(".inv-line"); if (!card) return;
+    var l = inv.lines[Number(card.getAttribute("data-i"))];
+    if (e.target.getAttribute("data-k") === "qty") { l.qty = Number(e.target.value) || 0; l.free = 0; invRenderTally(); return; }
+    if (e.target.getAttribute("data-act") === "q") {
+      var q = e.target.value, ul = card.querySelector("ul");
+      clearTimeout(inv.searchTimer);
+      inv.searchTimer = setTimeout(function () {
+        if (q.trim().length < 2) { ul.innerHTML = ""; return; }
+        ul.innerHTML = '<li class="cam-note" style="padding:8px">Searching…</li>';
+        apiPost({ op: "invoiceSearch", q: q }).then(function (d) {
+          var hits = (d && d.hits) || [];
+          card._hits = hits;
+          ul.innerHTML = hits.length ? hits.map(function (h, k) {
+            return '<li><button type="button" data-hit="' + k + '">' + escapeHtml(h.title) + '<small>' + escapeHtml(h.barcode || h.sku) + '</small></button></li>';
+          }).join("") : '<li class="cam-note" style="padding:8px">No products match those words.</li>';
+        }).catch(function () { ul.innerHTML = '<li class="cam-note" style="padding:8px">Search failed — check your connection.</li>'; });
+      }, 350);
+    }
+  });
+  invEl("invLines").addEventListener("change", function (e) {
+    if (e.target.getAttribute("data-k") !== "keep") return;
+    var card = e.target.closest(".inv-line"), i = Number(card.getAttribute("data-i"));
+    inv.lines[i].keep = e.target.checked; card.classList.toggle("off", !e.target.checked); invRenderTally();
+  });
+  invEl("invLines").addEventListener("click", function (e) {
+    var btn = e.target.closest("button"); if (!btn) return;
+    var card = btn.closest(".inv-line"), i = Number(card.getAttribute("data-i")), l = inv.lines[i];
+    if (btn.getAttribute("data-act") === "pick") {
+      var box = card.querySelector(".inv-pick"); box.hidden = !box.hidden;
+      if (!box.hidden) { var q = box.querySelector("input"); q.value = l.description; q.dispatchEvent(new Event("input", { bubbles: true })); q.focus(); }
+    }
+    if (btn.getAttribute("data-act") === "ok") { l.check = false; l.uncertain = false; l.status = "picked"; l.why = ""; card.outerHTML = invLineHtml(l, i); invRenderTally(); }
+    if (btn.hasAttribute("data-hit")) {
+      var h = card._hits[Number(btn.getAttribute("data-hit"))];
+      l.match = h; l.status = "picked"; l.check = false; l.uncertain = false; l.why = "";
+      card.outerHTML = invLineHtml(l, i); invRenderTally();
+    }
+  });
+
+  invEl("invExportBtn").addEventListener("click", function () {
+    var btn = invEl("invExportBtn"); if (btn.disabled) return;
+    btn.disabled = true; invSay("invExportStatus", "Building the file…");
+    var payload = inv.lines.map(function (l) {
+      return { code: l.code, description: l.description, qty: Number(l.qty) + Number(l.free || 0), keep: l.keep,
+               match: l.match, status: l.status, check: !!(l.match && l.check) };
+    });
+    apiPost({ op: "invoiceExport", header: inv.header, lines: payload }, INV_TIMEOUT_MS)
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.error) || "Couldn't build the file.");
+        var bin = atob(d.data), bytes = new Uint8Array(bin.length);
+        for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+        var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = d.filename;
+        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+        var el = invEl("invExportStatus");
+        el.hidden = false; el.className = "inv-status ok";
+        el.innerHTML = escapeHtml(d.filename) + " — " + d.lines + " lines, " + d.units + " units. Also saved in Drive: <a href=\"" + escapeHtml(d.url) + "\" target=\"_blank\" rel=\"noopener\">open</a>.";
+      })
+      .catch(function (err) { invSay("invExportStatus", err.message || "Couldn't build the file.", "err"); })
+      .then(function () { btn.disabled = false; });
+  });
+
 
   var recent = [];
   try {
