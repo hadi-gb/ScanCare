@@ -1888,10 +1888,12 @@
       <input type="file" id="invPhotos" accept="image/*" multiple class="sr-only">
       <div class="inv-thumbs" id="invThumbs"></div>
       <div class="inv-actions">
-        <button class="btn-primary" type="button" id="invReadBtn" disabled>Read invoice</button>
+        <button class="btn-primary" type="button" id="invReadBtn" disabled>Read &amp; check</button>
+        <button class="btn-ghost" type="button" id="invQuickBtn" disabled>Quick file</button>
         <button class="btn-ghost" type="button" id="invClearBtn" hidden>Start over</button>
       </div>
       <div class="inv-status" id="invStatus" aria-live="polite" hidden></div>
+      <p class="cam-note">Quick file skips the review and downloads the BDC file right away — best for invoices with barcodes or suppliers you've already confirmed. Unsure lines are highlighted yellow in the file.</p>
       <p class="cam-note" id="invCatalogNote"></p>
     </section>
 
@@ -2651,6 +2653,7 @@
       return '<div class="inv-thumb"><img src="' + f.url + '" alt="Page ' + (i + 1) + '"><button type="button" data-rm="' + i + '" aria-label="Remove page ' + (i + 1) + '">&times;</button></div>';
     }).join("");
     invEl("invReadBtn").disabled = !inv.files.length || inv.busy;
+    invEl("invQuickBtn").disabled = !inv.files.length || inv.busy;
   }
   invEl("invPhotos").addEventListener("change", function (e) {
     Array.prototype.forEach.call(e.target.files, function (f) { inv.files.push({ file: f, url: URL.createObjectURL(f) }); });
@@ -2808,6 +2811,42 @@
     }
   });
 
+  function invDownload(d) {
+    var bin = atob(d.data), bytes = new Uint8Array(bin.length);
+    for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = d.filename;
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  }
+
+  invEl("invQuickBtn").addEventListener("click", function () {
+    if (inv.busy || !inv.files.length) return;
+    inv.busy = true; invRenderThumbs();
+    invEl("invReview").hidden = true;
+    invSay("invStatus", "Preparing photos…");
+    Promise.all(inv.files.map(function (f) { return invShrink(f.url); }))
+      .then(function (images) {
+        invSay("invStatus", "Reading and building the file…");
+        return apiPost({ op: "invoiceQuick", images: images }, INV_TIMEOUT_MS);
+      })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.error) || "Something went wrong while reading.");
+        inv.header = d.header;
+        inv.lines = d.lines.map(function (l) { l.keep = true; l.check = l.status === "check" || l.uncertain; return l; });
+        invRenderReview();
+        invEl("invClearBtn").hidden = false;
+        if (!d.file || !d.file.ok) throw new Error((d.file && d.file.error) || "Couldn't build the file.");
+        invDownload(d.file);
+        var yellow = inv.lines.filter(function (l) { return l.match && l.check; }).length;
+        var missing = inv.lines.filter(function (l) { return !l.match; }).length;
+        invSay("invStatus", "Downloaded " + d.file.filename + " — " + d.file.lines + " lines, " + d.file.units + " units." +
+          (yellow ? " " + yellow + " highlighted yellow to check." : "") +
+          (missing ? " " + missing + " not found (listed below, not in the file)." : " Nothing missing."), missing || yellow ? "" : "ok");
+      })
+      .catch(function (err) { invSay("invStatus", err.message || "Something went wrong.", "err"); })
+      .then(function () { inv.busy = false; invRenderThumbs(); });
+  });
+
   invEl("invExportBtn").addEventListener("click", function () {
     var btn = invEl("invExportBtn"); if (btn.disabled) return;
     btn.disabled = true; invSay("invExportStatus", "Building the file…");
@@ -2818,11 +2857,7 @@
     apiPost({ op: "invoiceExport", header: inv.header, lines: payload }, INV_TIMEOUT_MS)
       .then(function (d) {
         if (!d || !d.ok) throw new Error((d && d.error) || "Couldn't build the file.");
-        var bin = atob(d.data), bytes = new Uint8Array(bin.length);
-        for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
-        var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = d.filename;
-        document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+        invDownload(d);
         var el = invEl("invExportStatus");
         el.hidden = false; el.className = "inv-status ok";
         el.textContent = "Downloaded " + d.filename + " — " + d.lines + " lines, " + d.units + " units.";
