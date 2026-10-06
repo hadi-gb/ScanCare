@@ -2714,7 +2714,7 @@
     invSay("invStatus", ""); invSay("invExportStatus", ""); invRenderThumbs();
   });
 
-  var INV_LABEL = { exact: ["Barcode match", "ok"], learned: ["Remembered", "ok"], high: ["Matched", "ok"], picked: ["Picked by you", "ok"], check: ["Check this", "warn"], none: ["Not found", "bad"] };
+  var INV_LABEL = { exact: ["Barcode match", "ok"], code: ["Code match", "ok"], learned: ["Remembered", "ok"], high: ["Matched", "ok"], picked: ["Picked by you", "ok"], check: ["Check this", "warn"], none: ["Not found", "bad"] };
 
   function invLineHtml(l, i) {
     var lab = l.match ? (l.check && l.status !== "check" ? ["Check this", "warn"] : INV_LABEL[l.status] || INV_LABEL.high) : INV_LABEL.none;
@@ -2725,7 +2725,7 @@
     return '<div class="' + cls + '" data-i="' + i + '">' +
       '<div class="inv-src">Invoice: ' + escapeHtml(l.description) + (l.code ? " &middot; " + escapeHtml(l.code) : "") + '</div>' +
       '<div class="inv-match">' + (l.match ? escapeHtml(l.match.title) : "No product found") + '</div>' +
-      (l.match ? '<div class="inv-meta">' + escapeHtml(l.match.barcode || "") + (l.match.sku && l.match.sku !== l.match.barcode ? " · " + escapeHtml(l.match.sku) : "") + '</div>' : "") +
+      (l.match ? '<div class="inv-meta">' + (l.match.brand ? escapeHtml(l.match.brand) + " · " : "") + escapeHtml(l.match.barcode || "") + (l.match.sku && l.match.sku !== l.match.barcode ? " · " + escapeHtml(l.match.sku) : "") + '</div>' : "") +
       (why.length ? '<div class="inv-why">' + why.join(" · ") + '</div>' : "") +
       '<div class="inv-row">' +
         '<span class="inv-chip ' + lab[1] + '">' + lab[0] + '</span>' +
@@ -2734,7 +2734,7 @@
         (l.match && l.check ? '<button type="button" class="btn-ghost btn-small" data-act="ok">It’s right</button>' : "") +
         '<label><input type="checkbox" data-k="keep"' + (l.keep ? " checked" : "") + '> Keep</label>' +
       '</div>' +
-      '<div class="inv-pick" hidden><input type="search" placeholder="Search products" data-act="q"><ul></ul></div>' +
+      '<div class="inv-pick" hidden><input type="search" placeholder="Name, brand, barcode or SKU" data-act="q"><ul></ul></div>' +
     '</div>';
   }
 
@@ -2785,7 +2785,7 @@
           var hits = (d && d.hits) || [];
           card._hits = hits;
           ul.innerHTML = hits.length ? hits.map(function (h, k) {
-            return '<li><button type="button" data-hit="' + k + '">' + escapeHtml(h.title) + '<small>' + escapeHtml(h.barcode || h.sku) + '</small></button></li>';
+            return '<li><button type="button" data-hit="' + k + '">' + escapeHtml(h.title) + '<small>' + [h.brand, h.barcode, (h.sku && h.sku !== h.barcode ? h.sku : "")].filter(Boolean).map(escapeHtml).join(" · ") + '</small></button></li>';
           }).join("") : '<li class="cam-note" style="padding:8px">No products match those words.</li>';
         }).catch(function () { ul.innerHTML = '<li class="cam-note" style="padding:8px">Search failed — check your connection.</li>'; });
       }, 350);
