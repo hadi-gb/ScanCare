@@ -60,6 +60,8 @@
   input[type=search] { width: 100%; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+  .nolink h2 { font-size: 1.1rem; text-transform: none; letter-spacing: 0; color: var(--accent-strong); }
+  .nolink p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; margin: 0; }
   .lock { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
   .lock-card { width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 26px 22px; box-shadow: 0 8px 24px var(--shadow); text-align: center; }
   .lock-card h1 { margin: 0 0 4px; font-family: "Manrope", sans-serif; font-weight: 800; color: var(--accent-strong); font-size: 1.4rem; }
@@ -107,23 +109,14 @@
 </head>
 <body>
 <div class="app">
-  <div class="lock" id="lockScreen">
-    <form class="lock-card" id="loginForm">
-      <h1>Loolia Invoices</h1>
-      <p>Supplier invoice photos to a Shopify BDC file.</p>
-      <label class="sr-only" for="loginUser">Username</label>
-      <input id="loginUser" type="text" placeholder="Username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
-      <label class="sr-only" for="loginPass">Password</label>
-      <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
-      <button class="btn-primary" type="submit" id="loginBtn">Log in</button>
-      <div class="lock-err" id="loginErr" aria-live="polite"></div>
-    </form>
-  </div>
+  <section class="nolink" id="noLink" hidden>
+    <h2>Loolia Invoices</h2>
+    <p id="noLinkMsg">Open this page from the Loolia Invoices link you were sent. It has a code at the end that lets the page work.</p>
+  </section>
 
-  <div id="appView" hidden>
+  <div id="appView">
     <header>
       <h1>Loolia<span>Invoices</span></h1>
-      <div class="who"><span id="whoName"></span><button type="button" id="logoutBtn">Log out</button></div>
     </header>
 
     <section aria-labelledby="inv-read-h">
@@ -163,7 +156,7 @@
 (function () {
   // The web app address from Apps Script (Deploy -> Manage deployments -> Web app URL).
   var API_URL = "https://script.google.com/macros/s/AKfycby3dJHUQcn0vIizWAiAiTmRVuhzUiTGSyTdLyy3DvVG1PIJi0PS3xvJlDOgcfbEhxTt-A/exec";
-  var SESSION_KEY = "loolia_inv_session_v1";
+  var KEY_STORE = "loolia_inv_key_v1";
   var API_TIMEOUT_MS = 45000;
 
   function escapeHtml(s) {
@@ -171,63 +164,40 @@
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
     });
   }
-  function readSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch (e) { return null; } }
-  function saveSession(s) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) {} }
-  function clearSession() { try { localStorage.removeItem(SESSION_KEY); } catch (e) {} }
-
-  var lockScreen = document.getElementById("lockScreen");
-  var appView = document.getElementById("appView");
-  function showLogin(msg) {
-    appView.hidden = true; lockScreen.hidden = false;
-    document.getElementById("loginErr").textContent = msg || "";
-    document.getElementById("loginPass").value = "";
+  // The private link ends in #k=<code>. Keep it in the address (an iPhone home-screen icon
+  // saves the address as it is) and remember it on this device too.
+  function accessKey() {
+    var m = String(location.hash || "").match(/[#&]k=([a-f0-9]{64})/);
+    if (m) { try { localStorage.setItem(KEY_STORE, m[1]); } catch (e) {} return m[1]; }
+    try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; }
   }
-  function showApp() {
-    var s = readSession();
-    document.getElementById("whoName").textContent = s ? s.username : "";
-    lockScreen.hidden = true; appView.hidden = false;
-    invOnShow();
+  function showNoLink(msg) {
+    document.getElementById("appView").hidden = true;
+    document.getElementById("noLink").hidden = false;
+    if (msg) document.getElementById("noLinkMsg").textContent = msg;
   }
 
-  function post(body, timeoutMs) {
+  function apiPost(body, timeoutMs) {
+    var key = accessKey();
+    if (!key) { showNoLink(); return Promise.reject(new Error("This page needs its private link.")); }
     var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     var t = controller ? setTimeout(function () { controller.abort(); }, timeoutMs || API_TIMEOUT_MS) : null;
     // No Content-Type header: keeps it a "simple" request Apps Script accepts from another site.
-    return fetch(API_URL, { method: "POST", body: JSON.stringify(body), signal: controller ? controller.signal : undefined })
+    return fetch(API_URL, { method: "POST", body: JSON.stringify(Object.assign({}, body, { key: key })), signal: controller ? controller.signal : undefined })
       .catch(function (err) {
         throw new Error(err && err.name === "AbortError" ? "That took too long. Check your connection and try again." : "Couldn’t connect. Check your connection.");
       })
       .then(function (res) { return res.json(); })
-      .then(function (d) { if (t) clearTimeout(t); return d; });
+      .then(function (d) {
+        if (t) clearTimeout(t);
+        if (d && d.authError) {
+          try { localStorage.removeItem(KEY_STORE); } catch (e) {}
+          showNoLink(d.error);
+          throw new Error(d.error);
+        }
+        return d;
+      });
   }
-  function apiPost(body, timeoutMs) {
-    var s = readSession();
-    if (!s || !s.token) { showLogin(""); return Promise.reject(new Error("Please log in.")); }
-    return post(Object.assign({}, body, { token: s.token }), timeoutMs).then(function (d) {
-      if (d && d.authError) { clearSession(); showLogin(d.error || "Please log in again."); throw new Error(d.error || "Please log in again."); }
-      return d;
-    });
-  }
-
-  document.getElementById("loginForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var u = document.getElementById("loginUser").value.trim(), p = document.getElementById("loginPass").value;
-    var err = document.getElementById("loginErr"), btn = document.getElementById("loginBtn");
-    if (!u || !p) { err.textContent = "Enter your username and password."; return; }
-    btn.disabled = true; err.textContent = "Signing in…";
-    post({ op: "login", username: u, password: p }).then(function (d) {
-      btn.disabled = false;
-      if (!d || !d.ok) { err.textContent = (d && d.error) || "Wrong username or password."; return; }
-      saveSession({ token: d.token, username: d.username });
-      err.textContent = "";
-      showApp();
-    }).catch(function (x) { btn.disabled = false; err.textContent = x.message; });
-  });
-  document.getElementById("logoutBtn").addEventListener("click", function () {
-    var s = readSession();
-    if (s && s.token) post({ op: "logout", token: s.token }).catch(function () {});
-    clearSession(); inv.statusChecked = false; showLogin("Logged out.");
-  });
 
   // ================= Invoices: photo of a supplier invoice -> BDC file =================
   var inv = { files: [], header: null, lines: [], busy: false, statusChecked: false };
@@ -473,8 +443,7 @@
 
 
 
-  // Open straight into the app when a login is saved; the server still checks it on every request.
-  if (readSession()) showApp(); else showLogin("");
+  if (accessKey()) invOnShow(); else showNoLink();
 })();
 </script>
 </body>
