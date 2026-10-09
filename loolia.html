@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Loolia Invoices">
+<meta name="theme-color" content="#B23A6B">
+<title>Loolia Invoices</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FBF6F7;
+    --surface: #FFFFFF;
+    --surface-2: #F6ECEF;
+    --text: #2A1A20;
+    --text-muted: #7A6268;
+    --border: #EBDCE0;
+    --accent: #B23A6B;
+    --accent-strong: #8A2350;
+    --accent-soft: #F8E4EC;
+    --accent-contrast: #FFFFFF;
+    --ok: #2F8F5B; --ok-soft: #E3F3E9;
+    --warn: #A66A14; --warn-soft: #FAF0D9;
+    --critical: #B93A26; --critical-soft: #FAE5E0;
+    --info-soft: #EFE7EA;
+    --shadow: rgba(60, 20, 35, 0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171014; --surface: #21171C; --surface-2: #2A1E24; --text: #F3E9EC; --text-muted: #B79FA7;
+      --border: #3A2A31; --accent: #E37BA5; --accent-strong: #F2A3C3; --accent-soft: #3A1F2B; --accent-contrast: #1A0F14;
+      --ok: #6BCB8E; --ok-soft: #173123; --warn: #E0A339; --warn-soft: #382A10; --critical: #F07A62; --critical-soft: #3A1A14;
+      --info-soft: #2C2126; --shadow: rgba(0,0,0,0.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Work Sans", system-ui, sans-serif; font-size: 16px; -webkit-text-size-adjust: 100%; }
+  .app { max-width: 640px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(28px + env(safe-area-inset-bottom, 0px)); }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  header h1 { margin: 0; font-family: "Manrope", sans-serif; font-weight: 800; font-size: 1.35rem; color: var(--accent-strong); letter-spacing: -0.01em; }
+  header h1 span { font-weight: 600; color: var(--text-muted); font-size: 0.85rem; margin-left: 6px; letter-spacing: 0; }
+  .who { font-size: 0.8rem; color: var(--text-muted); }
+  .who button { background: none; border: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; padding: 4px 0 4px 8px; }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 10px var(--shadow); }
+  section h2 { margin: 0 0 8px; font-family: "Manrope", sans-serif; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); }
+  .scan-note, .cam-note { font-size: 0.8rem; color: var(--text-muted); margin: 6px 0; line-height: 1.45; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  button { font: inherit; cursor: pointer; }
+  .btn-primary { flex: 1; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-contrast); font-family: "Manrope", sans-serif; font-weight: 700; font-size: 0.92rem; }
+  .btn-primary:disabled { opacity: 0.45; cursor: default; }
+  .btn-ghost { padding: 11px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--accent-strong); font-family: "Manrope", sans-serif; font-weight: 700; font-size: 0.88rem; }
+  .btn-ghost:disabled { opacity: 0.45; cursor: default; }
+  .btn-small { padding: 6px 10px; font-size: 0.78rem; border-radius: 9px; }
+  input[type=number], input[type=search], input[type=text], input[type=password] { font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  input[type=search] { width: 100%; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .lock { min-height: 80vh; display: flex; align-items: center; justify-content: center; }
+  .lock-card { width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 26px 22px; box-shadow: 0 8px 24px var(--shadow); text-align: center; }
+  .lock-card h1 { margin: 0 0 4px; font-family: "Manrope", sans-serif; font-weight: 800; color: var(--accent-strong); font-size: 1.4rem; }
+  .lock-card p { margin: 0 0 18px; color: var(--text-muted); font-size: 0.9rem; }
+  .lock-card input { width: 100%; margin-bottom: 10px; padding: 12px; border-radius: 11px; background: var(--surface-2); }
+  .lock-card .btn-primary { width: 100%; }
+  .lock-err { color: var(--critical); font-size: 0.85rem; min-height: 20px; margin-top: 10px; }
+  /* ---- Invoices tab ---- */
+  .inv-drop { display:block; border:2px dashed var(--accent); border-radius:12px; padding:20px 14px; text-align:center; background:var(--accent-soft); cursor:pointer; }
+  .inv-drop strong { display:block; color:var(--accent); font-family:"Manrope",sans-serif; font-size:1rem; }
+  .inv-drop span { font-size:0.8rem; color:var(--text-muted); }
+  .inv-thumbs { display:flex; gap:8px; overflow-x:auto; padding:10px 0 0; }
+  .inv-thumb { position:relative; flex:none; }
+  .inv-thumb img { width:76px; height:100px; object-fit:cover; border-radius:8px; border:1px solid var(--border); display:block; }
+  .inv-thumb button { position:absolute; top:3px; right:3px; width:26px; height:26px; padding:0; border-radius:50%; background:var(--surface); color:var(--text); border:1px solid var(--border); }
+  .inv-actions { display:flex; gap:8px; margin-top:12px; }
+  .inv-status { margin-top:10px; padding:10px 12px; border-radius:10px; background:var(--info-soft); color:var(--text); font-size:0.85rem; }
+  .inv-status.err { background:var(--critical-soft); color:var(--critical); }
+  .inv-status.ok { background:var(--ok-soft); }
+  .inv-head { font-size:0.9rem; margin-bottom:8px; }
+  .inv-head b { font-family:"Manrope",sans-serif; }
+  .inv-tally { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .inv-chip { font-size:0.74rem; font-weight:700; border-radius:999px; padding:3px 9px; background:var(--surface-2); color:var(--text); }
+  .inv-chip.ok { background:var(--ok-soft); color:var(--ok); }
+  .inv-chip.warn { background:var(--warn-soft); color:var(--warn); }
+  .inv-chip.bad { background:var(--critical-soft); color:var(--critical); }
+  .inv-line { border:1px solid var(--border); border-left:4px solid var(--ok); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--surface); }
+  .inv-line.check { border-left-color:var(--warn); background:var(--warn-soft); }
+  .inv-line.none { border-left-color:var(--critical); }
+  .inv-line.off { opacity:0.45; }
+  .inv-src { font-size:0.78rem; color:var(--text-muted); }
+  .inv-match { font-weight:700; font-size:0.9rem; margin:3px 0; }
+  .inv-meta { font-size:0.74rem; color:var(--text-muted); font-family:"IBM Plex Mono",monospace; }
+  .inv-why { font-size:0.78rem; color:var(--warn); margin-top:3px; }
+  .inv-row { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  .inv-row input[type=number] { width:76px; }
+  .inv-row label { font-size:0.78rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
+  .inv-pick { margin-top:8px; }
+  .inv-pick ul { list-style:none; margin:6px 0 0; padding:0; border:1px solid var(--border); border-radius:8px; max-height:260px; overflow:auto; }
+  .inv-pick li button { width:100%; text-align:left; background:transparent; color:var(--text); border:0; border-bottom:1px solid var(--border); border-radius:0; font-weight:500; }
+  .inv-pick li small { display:block; color:var(--text-muted); font-weight:400; }
+  .inv-missing { border:1px solid var(--critical); background:var(--critical-soft); border-radius:10px; padding:10px 12px; font-size:0.85rem; margin-top:4px; }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="lock" id="lockScreen">
+    <form class="lock-card" id="loginForm">
+      <h1>Loolia Invoices</h1>
+      <p>Supplier invoice photos to a Shopify BDC file.</p>
+      <label class="sr-only" for="loginUser">Username</label>
+      <input id="loginUser" type="text" placeholder="Username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <label class="sr-only" for="loginPass">Password</label>
+      <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="btn-primary" type="submit" id="loginBtn">Log in</button>
+      <div class="lock-err" id="loginErr" aria-live="polite"></div>
+    </form>
+  </div>
+
+  <div id="appView" hidden>
+    <header>
+      <h1>Loolia<span>Invoices</span></h1>
+      <div class="who"><span id="whoName"></span><button type="button" id="logoutBtn">Log out</button></div>
+    </header>
+
+    <section aria-labelledby="inv-read-h">
+      <h2 id="inv-read-h">Read a supplier invoice</h2>
+      <p class="scan-note">Photograph each page flat and well lit. You get back the BDC file for the Shopify purchase order.</p>
+      <label class="inv-drop" for="invPhotos">
+        <strong>Take or choose photos</strong>
+        <span>One photo per page</span>
+      </label>
+      <input type="file" id="invPhotos" accept="image/*" multiple class="sr-only">
+      <div class="inv-thumbs" id="invThumbs"></div>
+      <div class="inv-actions">
+        <button class="btn-primary" type="button" id="invReadBtn" disabled>Read &amp; check</button>
+        <button class="btn-ghost" type="button" id="invQuickBtn" disabled>Quick file</button>
+        <button class="btn-ghost" type="button" id="invClearBtn" hidden>Start over</button>
+      </div>
+      <div class="inv-status" id="invStatus" aria-live="polite" hidden></div>
+      <p class="cam-note">Quick file skips the review and downloads the BDC file right away. Best for invoices with barcodes or suppliers you've already confirmed. Unsure lines are highlighted yellow in the file.</p>
+      <p class="cam-note" id="invCatalogNote"></p>
+    </section>
+
+    <section aria-labelledby="inv-review-h" id="invReview" hidden>
+      <h2 id="inv-review-h">Check the lines</h2>
+      <div class="inv-head" id="invHead"></div>
+      <div class="inv-tally" id="invTally"></div>
+      <div id="invLines"></div>
+      <div class="inv-missing" id="invMissing" hidden></div>
+      <div class="inv-actions">
+        <button class="btn-primary" type="button" id="invExportBtn">Download BDC file</button>
+      </div>
+      <div class="inv-status" id="invExportStatus" aria-live="polite" hidden></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  // The web app address from Apps Script (Deploy -> Manage deployments -> Web app URL).
+  var API_URL = "https://script.google.com/macros/s/AKfycby3dJHUQcn0vIizWAiAiTmRVuhzUiTGSyTdLyy3DvVG1PIJi0PS3xvJlDOgcfbEhxTt-A/exec";
+  var SESSION_KEY = "loolia_inv_session_v1";
+  var API_TIMEOUT_MS = 45000;
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+    });
+  }
+  function readSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch (e) { return null; } }
+  function saveSession(s) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch (e) {} }
+  function clearSession() { try { localStorage.removeItem(SESSION_KEY); } catch (e) {} }
+
+  var lockScreen = document.getElementById("lockScreen");
+  var appView = document.getElementById("appView");
+  function showLogin(msg) {
+    appView.hidden = true; lockScreen.hidden = false;
+    document.getElementById("loginErr").textContent = msg || "";
+    document.getElementById("loginPass").value = "";
+  }
+  function showApp() {
+    var s = readSession();
+    document.getElementById("whoName").textContent = s ? s.username : "";
+    lockScreen.hidden = true; appView.hidden = false;
+    invOnShow();
+  }
+
+  function post(body, timeoutMs) {
+    var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var t = controller ? setTimeout(function () { controller.abort(); }, timeoutMs || API_TIMEOUT_MS) : null;
+    // No Content-Type header: keeps it a "simple" request Apps Script accepts from another site.
+    return fetch(API_URL, { method: "POST", body: JSON.stringify(body), signal: controller ? controller.signal : undefined })
+      .catch(function (err) {
+        throw new Error(err && err.name === "AbortError" ? "That took too long. Check your connection and try again." : "Couldn’t connect. Check your connection.");
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (d) { if (t) clearTimeout(t); return d; });
+  }
+  function apiPost(body, timeoutMs) {
+    var s = readSession();
+    if (!s || !s.token) { showLogin(""); return Promise.reject(new Error("Please log in.")); }
+    return post(Object.assign({}, body, { token: s.token }), timeoutMs).then(function (d) {
+      if (d && d.authError) { clearSession(); showLogin(d.error || "Please log in again."); throw new Error(d.error || "Please log in again."); }
+      return d;
+    });
+  }
+
+  document.getElementById("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var u = document.getElementById("loginUser").value.trim(), p = document.getElementById("loginPass").value;
+    var err = document.getElementById("loginErr"), btn = document.getElementById("loginBtn");
+    if (!u || !p) { err.textContent = "Enter your username and password."; return; }
+    btn.disabled = true; err.textContent = "Signing in…";
+    post({ op: "login", username: u, password: p }).then(function (d) {
+      btn.disabled = false;
+      if (!d || !d.ok) { err.textContent = (d && d.error) || "Wrong username or password."; return; }
+      saveSession({ token: d.token, username: d.username });
+      err.textContent = "";
+      showApp();
+    }).catch(function (x) { btn.disabled = false; err.textContent = x.message; });
+  });
+  document.getElementById("logoutBtn").addEventListener("click", function () {
+    var s = readSession();
+    if (s && s.token) post({ op: "logout", token: s.token }).catch(function () {});
+    clearSession(); inv.statusChecked = false; showLogin("Logged out.");
+  });
+
+  // ================= Invoices: photo of a supplier invoice -> BDC file =================
+  var inv = { files: [], header: null, lines: [], busy: false, statusChecked: false };
+  var INV_TIMEOUT_MS = 180000; // reading + matching can take a minute or two on slow wifi
+
+  function invEl(id) { return document.getElementById(id); }
+  function invSay(id, msg, kind) {
+    var el = invEl(id); if (!el) return;
+    el.hidden = !msg; el.textContent = msg || "";
+    el.className = "inv-status" + (kind ? " " + kind : "");
+  }
+
+  function invOnShow() {
+    if (inv.statusChecked) return;
+    inv.statusChecked = true;
+    apiPost({ op: "invoiceStatus" }).then(function (d) {
+      var note = invEl("invCatalogNote");
+      if (!d || !d.ok) { note.textContent = ""; return; }
+      if (!d.ready) { note.textContent = "The product catalog isn't set up yet — ask for runInvoiceSetup to be run once in Apps Script."; return; }
+      var when = d.updatedAt ? new Date(d.updatedAt).toLocaleDateString() : "";
+      note.textContent = d.count.toLocaleString() + " products to match against" + (when ? ", refreshed " + when : "") + ".";
+    }).catch(function () {});
+  }
+
+  function invRenderThumbs() {
+    invEl("invThumbs").innerHTML = inv.files.map(function (f, i) {
+      return '<div class="inv-thumb"><img src="' + f.url + '" alt="Page ' + (i + 1) + '"><button type="button" data-rm="' + i + '" aria-label="Remove page ' + (i + 1) + '">&times;</button></div>';
+    }).join("");
+    invEl("invReadBtn").disabled = !inv.files.length || inv.busy;
+    invEl("invQuickBtn").disabled = !inv.files.length || inv.busy;
+  }
+  invEl("invPhotos").addEventListener("change", function (e) {
+    Array.prototype.forEach.call(e.target.files, function (f) { inv.files.push({ file: f, url: URL.createObjectURL(f) }); });
+    e.target.value = ""; invRenderThumbs();
+  });
+  invEl("invThumbs").addEventListener("click", function (e) {
+    var i = e.target.getAttribute("data-rm"); if (i === null) return;
+    URL.revokeObjectURL(inv.files[i].url); inv.files.splice(Number(i), 1); invRenderThumbs();
+  });
+
+  function invShrink(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () {
+        var max = 1800, w = img.naturalWidth, h = img.naturalHeight, s = Math.min(1, max / Math.max(w, h));
+        var c = document.createElement("canvas"); c.width = Math.round(w * s); c.height = Math.round(h * s);
+        var g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        resolve({ mime: "image/jpeg", data: c.toDataURL("image/jpeg", 0.8).split(",")[1] });
+      };
+      img.onerror = function () { reject(new Error("One of the photos couldn't be opened.")); };
+      img.src = url;
+    });
+  }
+
+  invEl("invReadBtn").addEventListener("click", function () {
+    if (inv.busy || !inv.files.length) return;
+    inv.busy = true; invRenderThumbs();
+    invEl("invReview").hidden = true;
+    invSay("invStatus", "Preparing photos…");
+    Promise.all(inv.files.map(function (f) { return invShrink(f.url); }))
+      .then(function (images) {
+        invSay("invStatus", "Reading the invoice and matching products. This takes about 30–90 seconds…");
+        return apiPost({ op: "invoiceRead", images: images }, INV_TIMEOUT_MS);
+      })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.error) || "Something went wrong while reading.");
+        inv.header = d.header;
+        inv.lines = d.lines.map(function (l) {
+          l.keep = true;
+          l.check = l.status === "check" || l.uncertain;
+          return l;
+        });
+        var tm = d.timing;
+        var info = tm ? "Read in " + tm.read + "s, matched in " + tm.match + "s" +
+          (tm.savedLines ? " · " + tm.savedLines + " line" + (tm.savedLines > 1 ? "s" : "") + " matched instantly from barcodes or memory" : "") + "." : "";
+        invSay("invStatus", d.warning || info, d.warning ? "err" : "ok");
+        invEl("invClearBtn").hidden = false;
+        invRenderReview();
+      })
+      .catch(function (err) { invSay("invStatus", err.message || "Something went wrong while reading.", "err"); })
+      .then(function () { inv.busy = false; invRenderThumbs(); });
+  });
+
+  invEl("invClearBtn").addEventListener("click", function () {
+    inv.files.forEach(function (f) { URL.revokeObjectURL(f.url); });
+    inv.files = []; inv.lines = []; inv.header = null;
+    invEl("invReview").hidden = true; invEl("invClearBtn").hidden = true;
+    invSay("invStatus", ""); invSay("invExportStatus", ""); invRenderThumbs();
+  });
+
+  var INV_LABEL = { exact: ["Barcode match", "ok"], code: ["Code match", "ok"], learned: ["Remembered", "ok"], high: ["Matched", "ok"], picked: ["Picked by you", "ok"], check: ["Check this", "warn"], none: ["Not found", "bad"] };
+
+  function invLineHtml(l, i) {
+    var lab = l.match ? (l.check && l.status !== "check" ? ["Check this", "warn"] : INV_LABEL[l.status] || INV_LABEL.high) : INV_LABEL.none;
+    var cls = "inv-line" + (!l.match ? " none" : (l.check ? " check" : "")) + (l.keep ? "" : " off");
+    var why = [];
+    if (l.why) why.push(escapeHtml(l.why));
+    if (l.uncertain && l.note) why.push("Hard to read: " + escapeHtml(l.note));
+    return '<div class="' + cls + '" data-i="' + i + '">' +
+      '<div class="inv-src">Invoice: ' + escapeHtml(l.description) + (l.code ? " &middot; " + escapeHtml(l.code) : "") + '</div>' +
+      '<div class="inv-match">' + (l.match ? escapeHtml(l.match.title) : "No product found") + '</div>' +
+      (l.match ? '<div class="inv-meta">' + (l.match.brand ? escapeHtml(l.match.brand) + " · " : "") + escapeHtml(l.match.barcode || "") + (l.match.sku && l.match.sku !== l.match.barcode ? " · " + escapeHtml(l.match.sku) : "") + '</div>' : "") +
+      (why.length ? '<div class="inv-why">' + why.join(" · ") + '</div>' : "") +
+      '<div class="inv-row">' +
+        '<span class="inv-chip ' + lab[1] + '">' + lab[0] + '</span>' +
+        '<label>Qty <input type="number" inputmode="numeric" min="0" data-k="qty" value="' + (l.qty + (l.free || 0)) + '"></label>' +
+        '<button type="button" class="btn-ghost btn-small" data-act="pick">' + (l.match ? "Change" : "Find") + '</button>' +
+        (l.match && l.check ? '<button type="button" class="btn-ghost btn-small" data-act="ok">It’s right</button>' : "") +
+        '<label><input type="checkbox" data-k="keep"' + (l.keep ? " checked" : "") + '> Keep</label>' +
+      '</div>' +
+      '<div class="inv-pick" hidden><input type="search" placeholder="Name, brand, barcode or SKU" data-act="q"><ul></ul></div>' +
+    '</div>';
+  }
+
+  function invRenderReview() {
+    var h = inv.header || {};
+    invEl("invReview").hidden = false;
+    invEl("invHead").innerHTML = "<b>" + escapeHtml(h.supplier || "Supplier") + "</b>" +
+      (h.number ? " · Invoice " + escapeHtml(h.number) : "") + (h.date ? " · " + escapeHtml(h.date) : "");
+    invEl("invLines").innerHTML = inv.lines.map(invLineHtml).join("");
+    invRenderTally();
+  }
+
+  function invRenderTally() {
+    var kept = inv.lines.filter(function (l) { return l.keep; });
+    var ok = kept.filter(function (l) { return l.match && !l.check; }).length;
+    var chk = kept.filter(function (l) { return l.match && l.check; }).length;
+    var miss = kept.filter(function (l) { return !l.match; });
+    var units = kept.filter(function (l) { return l.match; }).reduce(function (a, l) { return a + (Number(l.qty) + Number(l.free || 0)); }, 0);
+    var h = inv.header || {};
+    var t = '<span class="inv-chip">' + kept.length + ' lines</span><span class="inv-chip ok">' + ok + ' matched</span>' +
+      (chk ? '<span class="inv-chip warn">' + chk + ' to check</span>' : "") +
+      (miss.length ? '<span class="inv-chip bad">' + miss.length + ' not found</span>' : "") +
+      '<span class="inv-chip">' + units + ' units in file</span>';
+    if (h.totalQty !== null && h.totalQty !== undefined) {
+      var all = kept.reduce(function (a, l) { return a + Number(l.qty) + Number(l.free || 0); }, 0);
+      t += all === h.totalQty
+        ? '<span class="inv-chip ok">Matches invoice total (' + h.totalQty + ')</span>'
+        : '<span class="inv-chip warn">Invoice says ' + h.totalQty + ' units, lines add up to ' + all + '</span>';
+    }
+    invEl("invTally").innerHTML = t;
+    var mb = invEl("invMissing");
+    mb.hidden = !miss.length;
+    mb.innerHTML = miss.length ? "<b>Not in the file — not found in the store:</b><br>" + miss.map(function (l) { return "• " + escapeHtml(l.description); }).join("<br>") +
+      "<br><span class=\"cam-note\">Could be a new product, a different barcode, or the wrong item. Use Find to pick it if it exists.</span>" : "";
+  }
+
+  invEl("invLines").addEventListener("input", function (e) {
+    var card = e.target.closest(".inv-line"); if (!card) return;
+    var l = inv.lines[Number(card.getAttribute("data-i"))];
+    if (e.target.getAttribute("data-k") === "qty") { l.qty = Number(e.target.value) || 0; l.free = 0; invRenderTally(); return; }
+    if (e.target.getAttribute("data-act") === "q") {
+      var q = e.target.value, ul = card.querySelector("ul");
+      clearTimeout(inv.searchTimer);
+      inv.searchTimer = setTimeout(function () {
+        if (q.trim().length < 2) { ul.innerHTML = ""; return; }
+        ul.innerHTML = '<li class="cam-note" style="padding:8px">Searching…</li>';
+        apiPost({ op: "invoiceSearch", q: q }).then(function (d) {
+          var hits = (d && d.hits) || [];
+          card._hits = hits;
+          ul.innerHTML = hits.length ? hits.map(function (h, k) {
+            return '<li><button type="button" data-hit="' + k + '">' + escapeHtml(h.title) + '<small>' + [h.brand, h.barcode, (h.sku && h.sku !== h.barcode ? h.sku : "")].filter(Boolean).map(escapeHtml).join(" · ") + '</small></button></li>';
+          }).join("") : '<li class="cam-note" style="padding:8px">No products match those words.</li>';
+        }).catch(function () { ul.innerHTML = '<li class="cam-note" style="padding:8px">Search failed — check your connection.</li>'; });
+      }, 350);
+    }
+  });
+  invEl("invLines").addEventListener("change", function (e) {
+    if (e.target.getAttribute("data-k") !== "keep") return;
+    var card = e.target.closest(".inv-line"), i = Number(card.getAttribute("data-i"));
+    inv.lines[i].keep = e.target.checked; card.classList.toggle("off", !e.target.checked); invRenderTally();
+  });
+  invEl("invLines").addEventListener("click", function (e) {
+    var btn = e.target.closest("button"); if (!btn) return;
+    var card = btn.closest(".inv-line"), i = Number(card.getAttribute("data-i")), l = inv.lines[i];
+    if (btn.getAttribute("data-act") === "pick") {
+      var box = card.querySelector(".inv-pick"); box.hidden = !box.hidden;
+      if (!box.hidden) { var q = box.querySelector("input"); q.value = l.description; q.dispatchEvent(new Event("input", { bubbles: true })); q.focus(); }
+    }
+    if (btn.getAttribute("data-act") === "ok") { l.check = false; l.uncertain = false; l.status = "picked"; l.why = ""; card.outerHTML = invLineHtml(l, i); invRenderTally(); }
+    if (btn.hasAttribute("data-hit")) {
+      var h = card._hits[Number(btn.getAttribute("data-hit"))];
+      l.match = h; l.status = "picked"; l.check = false; l.uncertain = false; l.why = "";
+      card.outerHTML = invLineHtml(l, i); invRenderTally();
+    }
+  });
+
+  function invDownload(d) {
+    var bin = atob(d.data), bytes = new Uint8Array(bin.length);
+    for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = d.filename;
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  }
+
+  invEl("invQuickBtn").addEventListener("click", function () {
+    if (inv.busy || !inv.files.length) return;
+    inv.busy = true; invRenderThumbs();
+    invEl("invReview").hidden = true;
+    invSay("invStatus", "Preparing photos…");
+    Promise.all(inv.files.map(function (f) { return invShrink(f.url); }))
+      .then(function (images) {
+        invSay("invStatus", "Reading and building the file…");
+        return apiPost({ op: "invoiceQuick", images: images }, INV_TIMEOUT_MS);
+      })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.error) || "Something went wrong while reading.");
+        inv.header = d.header;
+        inv.lines = d.lines.map(function (l) { l.keep = true; l.check = l.status === "check" || l.uncertain; return l; });
+        invRenderReview();
+        invEl("invClearBtn").hidden = false;
+        if (!d.file || !d.file.ok) throw new Error((d.file && d.file.error) || "Couldn't build the file.");
+        invDownload(d.file);
+        var yellow = inv.lines.filter(function (l) { return l.match && l.check; }).length;
+        var missing = inv.lines.filter(function (l) { return !l.match; }).length;
+        invSay("invStatus", "Downloaded " + d.file.filename + " — " + d.file.lines + " lines, " + d.file.units + " units." +
+          (yellow ? " " + yellow + " highlighted yellow to check." : "") +
+          (missing ? " " + missing + " not found (listed below, not in the file)." : " Nothing missing."), missing || yellow ? "" : "ok");
+      })
+      .catch(function (err) { invSay("invStatus", err.message || "Something went wrong.", "err"); })
+      .then(function () { inv.busy = false; invRenderThumbs(); });
+  });
+
+  invEl("invExportBtn").addEventListener("click", function () {
+    var btn = invEl("invExportBtn"); if (btn.disabled) return;
+    btn.disabled = true; invSay("invExportStatus", "Building the file…");
+    var payload = inv.lines.map(function (l) {
+      return { code: l.code, description: l.description, qty: Number(l.qty) + Number(l.free || 0), keep: l.keep,
+               match: l.match, status: l.status, check: !!(l.match && l.check) };
+    });
+    apiPost({ op: "invoiceExport", header: inv.header, lines: payload }, INV_TIMEOUT_MS)
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.error) || "Couldn't build the file.");
+        invDownload(d);
+        var el = invEl("invExportStatus");
+        el.hidden = false; el.className = "inv-status ok";
+        el.textContent = "Downloaded " + d.filename + " — " + d.lines + " lines, " + d.units + " units.";
+      })
+      .catch(function (err) { invSay("invExportStatus", err.message || "Couldn't build the file.", "err"); })
+      .then(function () { btn.disabled = false; });
+  });
+
+
+
+
+  // Open straight into the app when a login is saved; the server still checks it on every request.
+  if (readSession()) showApp(); else showLogin("");
+})();
+</script>
+</body>
+</html>
