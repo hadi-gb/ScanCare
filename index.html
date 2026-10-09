@@ -494,6 +494,65 @@
     gap: 10px;
   }
 
+  /* Stock table (Inventory tab, desktop) — physical count vs website count side by side,
+     built for the purchasing team. Phones keep the card list. */
+  .stk-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .stk-head h2 { margin: 0; }
+  .stk-view { display: none; gap: 4px; padding: 3px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+  body.desktop-mode .stk-view { display: inline-flex; }
+  .stk-view button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font-family: "Manrope", sans-serif; font-weight: 700; font-size: 0.74rem; color: var(--text-muted); cursor: pointer; }
+  .stk-view button.on { background: var(--surface); color: var(--accent-strong); box-shadow: 0 1px 3px var(--shadow); }
+  body.desktop-mode.stk-on .app { max-width: 1360px; }
+  .stk-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 4px 0 12px; }
+  .stk-tile { text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; cursor: pointer; font: inherit; color: inherit; display: flex; flex-direction: column; gap: 4px; }
+  .stk-tile:hover { border-color: var(--accent); }
+  .stk-tile.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .stk-tile .n { font-family: "Manrope", sans-serif; font-weight: 800; font-size: 1.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stk-tile .l { font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; }
+  .stk-tile.crit .n { color: var(--critical); } .stk-tile.warn .n { color: var(--warn); } .stk-tile.info .n { color: var(--info); }
+  .stk-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .stk-count { font-size: 0.78rem; color: var(--text-muted); }
+  .stk-dl { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-contrast); font-family: "Manrope", sans-serif; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+  .stk-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: auto; max-height: 70vh; }
+  .stk-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+  .stk-table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); text-align: left; font-family: "Manrope", sans-serif; font-weight: 700; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+  .stk-table thead th.num { text-align: right; }
+  .stk-table thead th .arr { opacity: 0.35; margin-left: 3px; }
+  .stk-table thead th.sorted .arr { opacity: 1; color: var(--accent); }
+  .stk-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .stk-table tr.stk-row { cursor: pointer; }
+  .stk-table tr.stk-row:hover td { background: var(--surface-2); }
+  .stk-table td.num { text-align: right; white-space: nowrap; }
+  .stk-mono { font-family: "IBM Plex Mono", monospace; font-size: 0.76rem; }
+  .stk-brand { font-family: "Manrope", sans-serif; font-weight: 700; font-size: 0.76rem; text-transform: uppercase; }
+  .stk-prod { min-width: 200px; max-width: 340px; }
+  .stk-sub { display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+  .stk-big { font-family: "Manrope", sans-serif; font-weight: 800; font-size: 0.95rem; }
+  .stk-pos { color: var(--info); } .stk-neg { color: var(--critical); } .stk-zero { color: var(--text-muted); }
+  .stk-price s { color: var(--text-muted); font-size: 0.7rem; margin-left: 4px; }
+  .stk-pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+  .stk-pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .stk-pill.crit { background: var(--critical-soft); color: var(--critical); }
+  .stk-pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .stk-pill.info { background: var(--info-soft); color: var(--info); }
+  .stk-pill.muted { background: var(--surface-2); color: var(--text-muted); }
+  .stk-soon { color: var(--warn); font-weight: 600; }
+  .stk-gone { color: var(--critical); font-weight: 600; }
+  .stk-links { white-space: nowrap; text-align: right; }
+  .stk-links a, .stk-links button { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 0.74rem; background: none; border: 0; padding: 0 0 0 10px; cursor: pointer; font-family: inherit; }
+  .stk-kit { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-strong); font-family: "Manrope", sans-serif; font-weight: 800; font-size: 0.62rem; letter-spacing: 0.06em; vertical-align: 1px; }
+  .stk-uneven { color: var(--warn); font-weight: 600; }
+  .stk-table tr.stk-lots td { background: var(--surface-2); padding: 0 10px 12px; }
+  .stk-lotgrid { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 10px; }
+  .stk-lot { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; font-size: 0.76rem; }
+  .stk-lot b { font-family: "IBM Plex Mono", monospace; }
+  .stk-lot.hit { border-color: var(--accent); background: var(--accent-soft); }
+  .stk-iname { display: block; font-family: "Manrope", sans-serif; font-weight: 700; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 2px; }
+  .stk-extra { color: var(--warn); font-weight: 600; }
+  .stk-kitnote { margin-top: 8px; font-size: 0.76rem; color: var(--text-muted); max-width: 780px; }
+  .stk-legend { font-size: 0.74rem; color: var(--text-muted); margin-top: 10px; }
+  @media (max-width: 1150px) { .stk-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
   /* Catalog / Inventory */
   .catalog-search {
     width: 100%;
@@ -1302,12 +1361,14 @@
        through behind the manifest, since visibility:hidden hides content but
        not the body's background-color. Force true white for print/PDF. */
     html, body { background: #fff !important; }
-    body * { visibility: hidden; }
-    .dispatch-manifest-print, .dispatch-manifest-print * { visibility: visible; }
-    /* Absolute + top:0 pulls this back to the top of the page — everything above
-       it in the DOM is only visibility:hidden, not removed, so it would otherwise
-       still leave a big blank gap above the manifest matching the app's own height. */
-    .dispatch-manifest-print { display: block; position: absolute; top: 0; left: 0; width: 100%; }
+    /* Take the whole app out of the printed layout (display:none, not just
+       visibility:hidden). Hidden-but-present content still has height, which made
+       the browser add an extra page holding nothing but the repeating header. Now
+       the printout is exactly as long as the manifest: a second page only appears
+       when the order list really doesn't fit on one. */
+    html, body { height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+    body > *:not(.dispatch-manifest-print) { display: none !important; }
+    .dispatch-manifest-print { display: block; position: static; width: 100%; }
 
     /* Repeats at the top of every printed page (Chrome re-renders position:fixed
        content per page), so a multi-page manifest still identifies its courier if
@@ -1699,7 +1760,13 @@
 
    <div id="inventoryView" hidden>
     <section aria-labelledby="inventory-h">
-      <h2 id="inventory-h">Inventory &mdash; sorted by nearest expiry</h2>
+      <div class="stk-head">
+        <h2 id="inventory-h">Inventory &mdash; sorted by nearest expiry</h2>
+        <div class="stk-view" id="stkViewToggle" role="group" aria-label="Inventory view">
+          <button type="button" data-view="table">Stock table</button>
+          <button type="button" data-view="cards">Cards</button>
+        </div>
+      </div>
       <label class="sr-only" for="catalogSearch">Search inventory</label>
       <input class="catalog-search" id="catalogSearch" type="text" placeholder="Search by name, brand, or barcode&hellip;" autocomplete="off">
       <div class="catalog-filters">
@@ -1713,10 +1780,26 @@
           <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
           <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
         </select>
+        <label class="sr-only" for="stkBrand">Filter by brand</label>
+        <select class="catalog-select" id="stkBrand" hidden><option value="">All brands</option></select>
       </div>
       <div class="web-bar">
         <div class="flag-row" id="webChips" role="group" aria-label="Filter by website stock"></div>
         <div class="web-status" id="webStatus"></div>
+      </div>
+      <div id="stkPanel" hidden>
+        <div class="stk-tiles" id="stkTiles"></div>
+        <div class="stk-toolbar">
+          <span class="stk-count" id="stkCount"></span>
+          <button type="button" class="stk-dl" id="stkDownload">Download Excel</button>
+        </div>
+        <div class="stk-wrap">
+          <table class="stk-table">
+            <thead><tr id="stkHead"></tr></thead>
+            <tbody id="stkBody"></tbody>
+          </table>
+        </div>
+        <p class="stk-legend"><b>Difference</b> = physical minus website. <span class="stk-pos">+ more in the warehouse than the website shows</span> &middot; <span class="stk-neg">&minus; the website shows more than we have</span> &middot; Click a row to see each expiry lot.</p>
       </div>
       <div class="inv-list" id="catalog"></div>
       <button type="button" class="btn-ghost btn-small catalog-showmore" id="catalogShowMore" hidden>Show more</button>
@@ -2587,6 +2670,7 @@
     els.tabInvoiceBtn.classList.toggle("active", activeTab === "invoice");
     els.invoiceView.hidden = activeTab !== "invoice";
     if (activeTab === "invoice") invOnShow();
+    if (activeTab !== "inventory") document.body.classList.remove("stk-on");
     if (activeTab === "inventory") { renderCatalog(); loadWebSnapshot(false); }
     if (activeTab === "scan") {
       moveScannerBlock(els.scanScannerSlot);
@@ -5079,7 +5163,345 @@
     return '<div class="web-row"><span class="wlabel">Website</span>' + inner + '</div>';
   }
 
+  // ---- Stock table (Inventory tab, desktop) ---------------------------------
+  // One row per product: physical count from MASTER INVENTORY next to the website count
+  // from the Website Stock snapshot, with filters, sorting and an Excel download — so
+  // purchasing can compare the two without checking products one by one in Shopify.
+  // Phones (and anyone who picks "Cards") keep the card list below.
+  var STK_VIEW_KEY = "scancare_inv_view_v1";
+  var STK_LOW = 2; // "Low stock" tile: this many or fewer on the shelf
+  var stkView = "table";
+  try { stkView = localStorage.getItem(STK_VIEW_KEY) === "cards" ? "cards" : "table"; } catch (e) {}
+  var stkState = { filter: "all", sort: "status", dir: 1, open: {} };
+  var stkEls = {
+    panel: document.getElementById("stkPanel"), tiles: document.getElementById("stkTiles"),
+    count: document.getElementById("stkCount"), download: document.getElementById("stkDownload"),
+    head: document.getElementById("stkHead"), body: document.getElementById("stkBody"),
+    brand: document.getElementById("stkBrand"), toggle: document.getElementById("stkViewToggle"),
+    title: document.getElementById("inventory-h")
+  };
+  var STK_STATUS_ORDER = { oversell: 0, lost: 1, mismatch: 2, nocount: 3, unknown: 4, out: 5, ok: 6, notweb: 7 };
+  var STK_TILES = [
+    { key: "all", label: "All products", test: function () { return true; } },
+    { key: "oversell", label: "On the website but 0 in the warehouse", tone: "crit", test: function (r) { return r.status.key === "oversell"; } },
+    { key: "lost", label: "In the warehouse but sold out online", tone: "warn", test: function (r) { return r.status.key === "lost"; } },
+    { key: "mismatch", label: "Counts don’t match", tone: "info", test: function (r) { return r.status.key === "mismatch"; } },
+    { key: "low", label: "Low stock (" + STK_LOW + " or less)", tone: "warn", test: function (r) { return r.low; } },
+    { key: "notweb", label: "Not on the website", test: function (r) { return r.status.key === "notweb"; } }
+  ];
+  var STK_COLS = [
+    { key: "barcode", label: "Barcode" }, { key: "brand", label: "Brand" }, { key: "product", label: "Product" },
+    { key: "days", label: "Nearest expiry" }, { key: "phys", label: "Physical", num: true },
+    { key: "web", label: "Website", num: true }, { key: "diff", label: "Difference", num: true },
+    { key: "price", label: "Price", num: true }, { key: "status", label: "Status" }, { key: "links", label: "", nosort: true }
+  ];
+
+  function stkTableOn() {
+    return document.body.classList.contains("desktop-mode") && stkView === "table";
+  }
+  function stkApplyView() {
+    if (!stkEls.panel) return;
+    var on = stkTableOn();
+    document.body.classList.toggle("stk-on", on && activeTab === "inventory");
+    stkEls.panel.hidden = !on;
+    els.catalog.hidden = on;
+    if (on) { els.catalogShowMore.hidden = true; if (els.webChips) els.webChips.hidden = true; }
+    stkEls.brand.hidden = !on;
+    stkEls.title.textContent = on ? "Inventory · stock check" : "Inventory — sorted by nearest expiry";
+    var btns = stkEls.toggle.querySelectorAll("button");
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("on", btns[i].getAttribute("data-view") === (on ? "table" : "cards"));
+  }
+
+  // A kit/set with no barcode of its own: a text code (letters, e.g. "Glow Nourish Kit")
+  // shared by several rows, one row per item inside the kit.
+  function stkIsKit(p) {
+    return p.hasBarcode && /[A-Z]/.test(webKey(p.barcode)) && p.batches.length > 1;
+  }
+  function stkQty(b) {
+    return (b.qty === null || b.qty === undefined || isNaN(b.qty)) ? null : Number(b.qty);
+  }
+  function stkItemName(b) {
+    if (b.notes) return b.notes;
+    var parts = String(b.productOnly || "").split(" — ");
+    return parts.length > 1 ? parts.slice(1).join(" — ") : (b.productOnly || "item");
+  }
+  function stkWebUrl(u) {
+    if (!u) return "";
+    if (/^https?:\/\//i.test(u)) return u;
+    return "https://sohaticare.com" + (u.charAt(0) === "/" ? "" : "/") + u;
+  }
+
+  function stkBuildRow(p) {
+    var kit = stkIsKit(p);
+    var qtys = p.batches.map(stkQty);
+    var counted = qtys.filter(function (q) { return q !== null; });
+    var phys = null;
+    if (kit) {
+      // A kit is only as many as its scarcest item: 2 creams + 2 serums + 2 eye creams = 2 kits.
+      if (counted.length === qtys.length) phys = Math.min.apply(null, counted.map(function (q) { return Math.max(0, q); }));
+    } else if (counted.length) {
+      phys = counted.reduce(function (a, q) { return a + q; }, 0);
+    }
+    // Kits expire with their earliest item; single products show the nearest lot that's
+    // actually on the shelf (an empty old lot shouldn't hide the real date).
+    var nearest = kit ? p.batches[0] : (p.batches.filter(function (b) { return (stkQty(b) || 0) > 0; })[0] || p.batches[0]);
+    var ex = expiryState(nearest.expiry);
+    var w = webFor(p);
+    var web = null, price = null, compareAt = null, url = "", webState;
+    if (!p.hasBarcode || !webSnap.map || !w) webState = "unknown";
+    else if (w.status === "ok") {
+      webState = w.qty === null || w.qty === undefined ? "unknown" : "ok";
+      web = webState === "ok" ? Number(w.qty) : null;
+      price = w.price; compareAt = w.compareAt; url = stkWebUrl(w.url);
+    } else if (w.status === "not_listed") webState = "notweb";
+    else webState = "unknown";
+
+    var status;
+    if (webState === "notweb") status = { key: "notweb", label: "Not on website", tone: "muted" };
+    else if (webState === "unknown") status = { key: "unknown", label: "Website not checked", tone: "muted" };
+    else if (phys === null) status = { key: "nocount", label: "Not counted", tone: "muted" };
+    else if (web > 0 && phys === 0) status = { key: "oversell", label: "Online, 0 here", tone: "crit" };
+    else if (web <= 0 && phys > 0) status = { key: "lost", label: "Have stock, sold out online", tone: "warn" };
+    else if (phys !== web) status = { key: "mismatch", label: "Count mismatch", tone: "info" };
+    else if (phys === 0) status = { key: "out", label: "Out of stock", tone: "muted" };
+    else status = { key: "ok", label: "Matches", tone: "ok" };
+
+    var first = p.batches[0];
+    var product = kit ? String(first.productOnly || "").split(" — ")[0] : (first.productOnly || p.name);
+    return {
+      p: p, kit: kit, barcode: p.hasBarcode ? p.barcode : "", brand: first.brand || "", product: product,
+      phys: phys, web: web, price: price, compareAt: compareAt, url: url,
+      diff: (phys !== null && web !== null) ? phys - web : null,
+      nearest: nearest, days: ex.days, status: status, statusRank: STK_STATUS_ORDER[status.key],
+      low: phys !== null && phys <= STK_LOW,
+      kitUneven: kit && phys !== null && qtys.some(function (q) { return q !== phys; })
+    };
+  }
+
+  function stkPopulateBrands() {
+    var current = stkEls.brand.value;
+    var brands = {};
+    ACTIVE_BATCHES.forEach(function (b) { if (b.brand) brands[String(b.brand).trim().toUpperCase()] = true; });
+    var list = Object.keys(brands).sort();
+    var html = '<option value="">All brands</option>' + list.map(function (b) {
+      return '<option value="' + escapeHtml(b) + '">' + escapeHtml(b) + '</option>';
+    }).join("");
+    if (stkEls.brand.getAttribute("data-built") !== html.length + ":" + list.length) {
+      stkEls.brand.innerHTML = html;
+      stkEls.brand.setAttribute("data-built", html.length + ":" + list.length);
+      if (list.indexOf(current) !== -1) stkEls.brand.value = current;
+    }
+  }
+
+  // Rows after search / brand / year / month — the tiles count within these.
+  function stkBaseRows() {
+    var filterText = (els.catalogSearch.value || "").trim().toLowerCase();
+    var y = els.catalogYear.value, m = els.catalogMonth.value;
+    var brand = stkEls.brand.value;
+    return groupedCatalog().filter(function (p) {
+      if (filterText && p.name.toLowerCase().indexOf(filterText) === -1 && String(p.barcode).toLowerCase().indexOf(filterText) === -1) return false;
+      if (brand && String(p.batches[0].brand || "").trim().toUpperCase() !== brand) return false;
+      if ((y || m) && !p.batches.some(function (b) { return batchMatchesYearMonth(b, y, m); })) return false;
+      return true;
+    }).map(stkBuildRow);
+  }
+  function stkPeriodOn() { return !!(els.catalogYear.value || els.catalogMonth.value); }
+  function stkInPeriod(b) { return batchMatchesYearMonth(b, els.catalogYear.value, els.catalogMonth.value); }
+
+  function stkVisibleRows(base) {
+    var tile = STK_TILES.filter(function (t) { return t.key === stkState.filter; })[0] || STK_TILES[0];
+    var list = base.filter(tile.test);
+    var k = stkState.sort, dir = stkState.dir;
+    list.sort(function (a, b) {
+      var va = k === "status" ? a.statusRank : a[k], vb = k === "status" ? b.statusRank : b[k];
+      var na = va === null || va === undefined || va === "", nb = vb === null || vb === undefined || vb === "";
+      if (na && nb) return 0;
+      if (na) return 1;   // blanks always last
+      if (nb) return -1;
+      var c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+      if (c === 0 && k === "status") c = (a.days === null ? 1e9 : a.days) - (b.days === null ? 1e9 : b.days);
+      return c * dir;
+    });
+    return list;
+  }
+
+  function stkExpiryCell(r) {
+    if (stkPeriodOn()) {
+      var hits = r.p.batches.filter(stkInPeriod);
+      var units = hits.map(stkQty);
+      var counted = units.some(function (q) { return q !== null; });
+      var total = units.reduce(function (a, q) { return a + (q || 0); }, 0);
+      var d = hits.length ? expiryState(hits[0].expiry).days : null;
+      return '<td class="stk-mono' + (d !== null && d < 0 ? " stk-gone" : d !== null && d <= 120 ? " stk-soon" : "") + '">' +
+        escapeHtml(hits.map(function (b) { return b.expiryRaw || "no expiry"; }).join(", ")) +
+        '<span class="stk-sub">' + (counted ? total + (total === 1 ? " unit" : " units") : "not counted") + "</span></td>";
+    }
+    var e = r.nearest;
+    return '<td class="stk-mono' + (r.days !== null && r.days < 0 ? " stk-gone" : r.days !== null && r.days <= 120 ? " stk-soon" : "") + '">' +
+      escapeHtml(e.expiry ? e.expiryRaw : "no expiry") + '<span class="stk-sub">' + escapeHtml(expiryState(e.expiry).sub) + "</span></td>";
+  }
+
+  function stkLotsHtml(r) {
+    var period = stkPeriodOn();
+    var lots = r.p.batches.map(function (b) {
+      var q = stkQty(b);
+      var hit = period && stkInPeriod(b);
+      var qty = q === null ? "not counted" : q + (q === 1 ? " unit" : " units");
+      var extra = r.kit && q !== null && r.phys !== null && q > r.phys ? ' <span class="stk-extra">(' + (q - r.phys) + " extra)</span>" : "";
+      return '<div class="stk-lot' + (hit ? " hit" : "") + '">' + (r.kit ? '<span class="stk-iname">' + escapeHtml(stkItemName(b)) + "</span>" : "") +
+        "Expiry <b>" + escapeHtml(b.expiry ? b.expiryRaw : "none") + "</b> &middot; " + qty + extra +
+        (b.pendingSync ? ' <span class="stk-extra">(not synced yet)</span>' : "") + "</div>";
+    }).join("");
+    var note = "";
+    if (r.kit) {
+      note = '<div class="stk-kitnote">' + (r.phys === null
+        ? "Kit count needs every item counted on the sheet."
+        : "Kit count = the item with the fewest units (" + r.phys + ")." + (r.kitUneven
+          ? " The items don’t match, so check the shelf: loose items left over, or a miscount."
+          : " All items match.")) +
+        (r.nearest.expiry ? " The kit’s expiry is its earliest item (" + escapeHtml(r.nearest.expiryRaw) + ")." : "") + "</div>";
+    }
+    return '<tr class="stk-lots"><td colspan="' + STK_COLS.length + '"><div class="stk-lotgrid">' + lots + "</div>" + note + "</td></tr>";
+  }
+
+  function renderStockTable() {
+    stkPopulateBrands();
+    renderWebStatus();
+    var base = stkBaseRows();
+    stkEls.tiles.innerHTML = STK_TILES.map(function (t) {
+      var n = base.filter(t.test).length;
+      return '<button type="button" class="stk-tile ' + (t.tone || "") + (stkState.filter === t.key ? " on" : "") + '" data-stk-filter="' + t.key + '" aria-pressed="' + (stkState.filter === t.key) + '">' +
+        '<span class="n">' + n + '</span><span class="l">' + escapeHtml(t.label) + "</span></button>";
+    }).join("");
+    stkEls.head.innerHTML = STK_COLS.map(function (c) {
+      var sorted = stkState.sort === c.key;
+      var label = c.key === "days" && stkPeriodOn() ? "Expiry in period" : c.label;
+      return '<th class="' + (c.num ? "num " : "") + (sorted ? "sorted" : "") + '" data-stk-sort="' + c.key + '"' +
+        (c.nosort ? ' style="cursor:default"' : ' aria-sort="' + (sorted ? (stkState.dir > 0 ? "ascending" : "descending") : "none") + '"') + ">" +
+        escapeHtml(label) + (c.nosort ? "" : '<span class="arr">' + (sorted && stkState.dir < 0 ? "↓" : "↑") + "</span>") + "</th>";
+    }).join("");
+    var list = stkVisibleRows(base);
+    stkEls.panel._rows = list;
+    var total = groupedCatalog().length;
+    stkEls.count.textContent = list.length + " of " + total + " products";
+    if (catalogLoading && !ACTIVE_BATCHES.length) {
+      stkEls.body.innerHTML = '<tr><td colspan="' + STK_COLS.length + '" class="stk-sub" style="padding:20px">Loading your MASTER INVENTORY sheet…</td></tr>';
+      return;
+    }
+    if (!list.length) {
+      stkEls.body.innerHTML = '<tr><td colspan="' + STK_COLS.length + '" class="stk-sub" style="padding:20px">No products match these filters.</td></tr>';
+      return;
+    }
+    stkEls.body.innerHTML = list.map(function (r, i) {
+      var key = r.p.barcode + "|" + r.p.batches[0].row;
+      var diff = r.diff === null ? '<span class="stk-zero">—</span>'
+        : '<span class="stk-big ' + (r.diff > 0 ? "stk-pos" : r.diff < 0 ? "stk-neg" : "stk-zero") + '">' + (r.diff > 0 ? "+" : "") + r.diff + "</span>";
+      var lotsLabel = r.kit
+        ? r.p.batches.length + " items inside" + (r.kitUneven ? ' · <span class="stk-uneven">items don’t match</span>' : "")
+        : r.p.batches.length + (r.p.batches.length === 1 ? " lot" : " lots");
+      var html = '<tr class="stk-row" data-i="' + i + '">' +
+        '<td class="stk-mono">' + escapeHtml(r.barcode || "no barcode") + "</td>" +
+        '<td class="stk-brand">' + escapeHtml(r.brand) + "</td>" +
+        '<td class="stk-prod">' + escapeHtml(r.product) + (r.kit ? ' <span class="stk-kit">KIT</span>' : "") + '<span class="stk-sub">' + lotsLabel + "</span></td>" +
+        stkExpiryCell(r) +
+        '<td class="num"><span class="stk-big">' + (r.phys === null ? "—" : r.phys) + "</span>" +
+          (r.phys === null ? '<span class="stk-sub">not counted</span>' : r.kit ? '<span class="stk-sub">' + (r.phys === 1 ? "kit" : "kits") + "</span>" : "") + "</td>" +
+        '<td class="num"><span class="stk-big">' + (r.web === null ? "—" : r.web) + "</span></td>" +
+        '<td class="num">' + diff + "</td>" +
+        '<td class="num stk-price stk-mono">' + (r.price === null || r.price === undefined ? "—" : formatUsd(r.price) +
+          (r.compareAt && r.compareAt > r.price ? "<s>" + formatUsd(r.compareAt) + "</s>" : "")) + "</td>" +
+        '<td><span class="stk-pill ' + r.status.tone + '">' + escapeHtml(r.status.label) + "</span></td>" +
+        '<td class="stk-links"><button type="button" data-stk-open="' + i + '">Open</button>' +
+          (r.url ? '<a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener">Website ↗</a>' : "") + "</td></tr>";
+      if (stkState.open[key]) html += stkLotsHtml(r);
+      return html;
+    }).join("");
+  }
+
+  function stkCsvCell(v, text) {
+    v = v === null || v === undefined ? "" : String(v);
+    if (text && /^[=+\-@]/.test(v)) v = "'" + v; // Excel would treat these as formulas
+    return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function stkDownload() {
+    var list = stkEls.panel._rows || [];
+    var period = stkPeriodOn();
+    var head = ["Barcode", "Brand", "Product", "Kit", period ? "Expiry (picked period)" : "Nearest expiry", "Physical", "Website", "Difference", "Price", "Compare at", "Status", "Website link"];
+    var lines = [head.join(",")].concat(list.map(function (r) {
+      var exp = period
+        ? r.p.batches.filter(stkInPeriod).map(function (b) { return b.expiryRaw || "no expiry"; }).join(" / ")
+        : (r.nearest.expiry ? r.nearest.expiryRaw : "");
+      return [
+        stkCsvCell(r.barcode, true), stkCsvCell(r.brand, true), stkCsvCell(r.product, true), r.kit ? "Yes" : "",
+        stkCsvCell(exp, true), stkCsvCell(r.phys), stkCsvCell(r.web), stkCsvCell(r.diff),
+        stkCsvCell(r.price), stkCsvCell(r.compareAt), stkCsvCell(r.status.label, true), stkCsvCell(r.url, true)
+      ].join(",");
+    }));
+    var d = new Date();
+    var name = "stock-check-" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + ".csv";
+    var blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  if (stkEls.panel) {
+    stkEls.toggle.addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-view]");
+      if (!b) return;
+      stkView = b.getAttribute("data-view");
+      try { localStorage.setItem(STK_VIEW_KEY, stkView); } catch (err) {}
+      catalogVisibleCount = CATALOG_LIMIT;
+      renderCatalog();
+    });
+    stkEls.brand.addEventListener("change", function () { renderCatalog(); });
+    stkEls.tiles.addEventListener("click", function (e) {
+      var t = e.target.closest("[data-stk-filter]");
+      if (!t) return;
+      var k = t.getAttribute("data-stk-filter");
+      stkState.filter = (stkState.filter === k && k !== "all") ? "all" : k; // click again to clear
+      renderStockTable();
+    });
+    stkEls.head.addEventListener("click", function (e) {
+      var th = e.target.closest("[data-stk-sort]");
+      if (!th) return;
+      var k = th.getAttribute("data-stk-sort");
+      if (k === "links") return;
+      if (stkState.sort === k) stkState.dir = -stkState.dir; else { stkState.sort = k; stkState.dir = 1; }
+      renderStockTable();
+    });
+    stkEls.body.addEventListener("click", function (e) {
+      var list = stkEls.panel._rows || [];
+      if (e.target.closest("a")) return; // website link opens in a new tab
+      var openBtn = e.target.closest("[data-stk-open]");
+      if (openBtn) {
+        var r0 = list[Number(openBtn.getAttribute("data-stk-open"))];
+        if (!r0) return;
+        setTab("scan");
+        if (!r0.p.hasBarcode) showResultForBatch(r0.p.batches[0]); else handleCode(r0.p.barcode);
+        return;
+      }
+      var tr = e.target.closest("tr.stk-row");
+      if (!tr) return;
+      var r = list[Number(tr.getAttribute("data-i"))];
+      if (!r) return;
+      var key = r.p.barcode + "|" + r.p.batches[0].row;
+      stkState.open[key] = !stkState.open[key];
+      renderStockTable();
+    });
+    stkEls.download.addEventListener("click", stkDownload);
+    // Switching between desk-width and phone-width re-picks table vs cards live.
+    var stkOnResize = function () { if (activeTab === "inventory") renderCatalog(); };
+    if (desktopModeQuery.addEventListener) desktopModeQuery.addEventListener("change", stkOnResize);
+    else if (desktopModeQuery.addListener) desktopModeQuery.addListener(stkOnResize);
+  }
+
   function renderCatalog() {
+    stkApplyView();
+    if (stkTableOn()) { renderStockTable(); return; }
     var filterText = (els.catalogSearch.value || "").trim().toLowerCase();
     var yearFilter = els.catalogYear.value;
     var monthFilter = els.catalogMonth.value;
